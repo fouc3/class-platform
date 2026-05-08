@@ -13,10 +13,13 @@ TEACHER_PASSWORD = "123456"
 DATA_FOLDER = "class_data"
 STUDENT_LIST_FILE = "student_list.xlsx"
 
-# ---------- AI 配置（DeepSeek）----------
-# 请到 https://platform.deepseek.com/ 注册获取 API Key
-DEEPSEEK_API_KEY = ""  # 改用环境变量，不要写在这里
-USE_AI = True  # 是否启用AI分析
+# ---------- AI 配置 ----------
+# 优先从环境变量读取，如果没有则使用空字符串
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+USE_AI = True
+
+if not DEEPSEEK_API_KEY:
+    st.warning("⚠️ DeepSeek API Key 未配置，AI 分析功能将不可用")
 
 if not os.path.exists(DATA_FOLDER):
     os.makedirs(DATA_FOLDER)
