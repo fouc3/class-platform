@@ -15,7 +15,7 @@ STUDENT_LIST_FILE = "student_list.xlsx"
 
 # ---------- AI 配置（DeepSeek）----------
 # 请到 https://platform.deepseek.com/ 注册获取 API Key
-DEEPSEEK_API_KEY = "sk-REPLACED"  # 替换成你的 DeepSeek API Key
+DEEPSEEK_API_KEY = ""  # 改用环境变量，不要写在这里
 USE_AI = True  # 是否启用AI分析
 
 if not os.path.exists(DATA_FOLDER):
