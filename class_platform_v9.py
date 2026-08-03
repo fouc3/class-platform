@@ -593,4 +593,5 @@ def teacher_portal():
                 direction = st.selectbox("加扣分方向", get_score_directions(), key="score_direction")
                 period = st.selectbox("上报周期", get_score_periods(), key="score_period")
             with col2:
-                score_date = st
+                score_date = st.date_input("时间", value=date.today(), key="score_date")
+                add_score = st.number_input("加分", min_value=0.0,
