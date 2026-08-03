@@ -589,6 +589,11 @@ def teacher_portal():
     with tab3:
         st.subheader("📊 量化管理")
         st.info("添加加扣分记录，按时间段筛选查看汇总")
+        
+        # 加载学生名单
+        student_list = load_student_list()
+        student_names = student_list["姓名"].tolist() if not student_list.empty else []
+        
         with st.expander("➕ 添加记录", expanded=False):
             with st.form("add_score_form"):
                 col1, col2, col3 = st.columns(3)
@@ -601,7 +606,12 @@ def teacher_portal():
                     add_score = st.number_input("加分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="s_add")
                     sub_score = st.number_input("扣分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="s_sub")
                 with col3:
-                    student_input = st.text_input("当事人", key="s_stu")
+                    # ===== 从学生名单下拉选择 =====
+                    if student_names:
+                        student_input = st.selectbox("当事人（选择学生）", student_names, key="s_stu")
+                    else:
+                        student_input = st.text_input("当事人（请先上传学生名单）", key="s_stu")
+                        st.warning("⚠️ 请先在「学生名单」Tab 上传学生名单")
                     reason = st.text_area("原由", key="s_reason")
                     proof = st.text_input("证明材料(可选)", key="s_proof")
                 if st.form_submit_button("添加"):
@@ -618,7 +628,8 @@ def teacher_portal():
                         st.success("已添加")
                         st.rerun()
                     else:
-                        st.error("请填写完整")
+                        st.error("请填写完整信息")
+        
         df_scores = load_data_csv("score_records")
         if not df_scores.empty:
             df_scores["加分"] = df_scores["加分"].astype(float)
