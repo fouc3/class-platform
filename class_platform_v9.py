@@ -529,14 +529,17 @@ def teacher_login():
 
 def teacher_portal():
     st.header("📊 教师管理平台")
+    
+    # 创建所有标签页
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-        "👥 学生名单", "📋 学生信息", "📊 量化管理", "🤖 AI分析", "📋 发布活动", 
-        "🏆 学生荣誉", "📊 任务与反馈", "📋 请假审批", "📥 数据导出"
+        "👥 学生名单", "📋 学生信息", "📊 量化管理", "🤖 AI分析", 
+        "📋 发布活动", "🏆 学生荣誉", "📊 任务与反馈", "📋 请假审批", "📥 数据导出"
     ])
     
-    # Tab1: 学生名单
+    # ===== Tab1: 学生名单 =====
     with tab1:
-        st.subheader("学生名单管理（登录凭证）")
+        st.subheader("👥 学生名单管理")
+        st.info("上传或手动添加学生名单，只有名单上的学生才能登录")
         uploaded = st.file_uploader("上传学生名单（Excel：姓名、学号两列）", type=["xlsx"], key="upload_list")
         if uploaded:
             df = pd.read_excel(uploaded, engine='openpyxl', dtype=str).fillna("")
@@ -546,212 +549,106 @@ def teacher_portal():
         if os.path.exists(STUDENT_LIST_FILE):
             df = pd.read_excel(STUDENT_LIST_FILE, engine='openpyxl', dtype=str).fillna("")
             st.dataframe(df, use_container_width=True)
-            with st.expander("手动添加"):
+            with st.expander("➕ 手动添加"):
                 col1, col2 = st.columns(2)
                 with col1:
                     new_name = st.text_input("姓名", key="add_name")
                 with col2:
                     new_id = st.text_input("学号", key="add_id")
-                if st.button("添加", key="add_btn"):
-                    if new_name and new_id:
-                        new_row = pd.DataFrame([{"姓名": new_name, "学号": new_id}])
-                        df = pd.concat([df, new_row], ignore_index=True)
-                        df.to_excel(STUDENT_LIST_FILE, index=False)
-                        st.rerun()
+                if st.button("添加", key="add_btn") and new_name and new_id:
+                    new_row = pd.DataFrame([{"姓名": new_name, "学号": new_id}])
+                    df = pd.concat([df, new_row], ignore_index=True)
+                    df.to_excel(STUDENT_LIST_FILE, index=False)
+                    st.rerun()
+        else:
+            st.warning("暂无学生名单")
     
-    # Tab2: 学生信息
+    # ===== Tab2: 学生信息 =====
     with tab2:
-        st.subheader("📋 学生基本信息档案")
+        st.subheader("📋 学生基本信息")
         df_info = load_data_csv("student_info")
         if not df_info.empty:
             col1, col2, col3, col4 = st.columns(4)
-            col1.metric("已填写学生数", len(df_info))
+            col1.metric("已填写人数", len(df_info))
             col2.metric("男生", len(df_info[df_info["性别"] == "男"]))
             col3.metric("女生", len(df_info[df_info["性别"] == "女"]))
             avg_age = df_info[df_info["年龄"].str.isdigit()]["年龄"].astype(float).mean() if len(df_info[df_info["年龄"].str.isdigit()]) > 0 else 0
             col4.metric("平均年龄", f"{avg_age:.1f}")
-            st.subheader("家庭性质分布")
-            family_counts = df_info["家庭性质"].value_counts()
-            st.bar_chart(family_counts)
-            st.subheader("详细信息")
             st.dataframe(df_info, use_container_width=True)
             csv_data = df_info.to_csv(index=False).encode('utf-8-sig')
-            st.download_button("📥 导出学生基本信息", csv_data, "学生基本信息.csv", "text/csv", key="export_info")
+            st.download_button("📥 导出", csv_data, "学生基本信息.csv", "text/csv", key="export_info")
         else:
-            st.info("暂无学生填写基本信息")
+            st.info("暂无数据")
     
-    # Tab3: 量化管理（增强版：按时间段筛选 + 学生汇总 + 明细查看）
+    # ===== Tab3: 量化管理 =====
     with tab3:
-        st.subheader("📊 班级量化管理")
-        st.info("添加加扣分记录，并按时间段筛选查看每个学生的得分汇总和明细")
-        
-        # 添加记录
-        with st.expander("➕ 添加加扣分记录", expanded=False):
+        st.subheader("📊 量化管理")
+        st.info("添加加扣分记录，按时间段筛选查看汇总")
+        with st.expander("➕ 添加记录", expanded=False):
             with st.form("add_score_form"):
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    source = st.selectbox("信息来源", get_score_sources(), key="score_source")
-                    direction = st.selectbox("加扣分方向", get_score_directions(), key="score_direction")
-                    period = st.selectbox("上报周期", get_score_periods(), key="score_period")
+                    source = st.selectbox("信息来源", get_score_sources(), key="s_src")
+                    direction = st.selectbox("方向", get_score_directions(), key="s_dir")
+                    period = st.selectbox("上报周期", get_score_periods(), key="s_per")
                 with col2:
-                    score_date = st.date_input("时间", value=date.today(), key="score_date")
-                    add_score = st.number_input("加分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="add_score_input")
-                    sub_score = st.number_input("扣分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="sub_score_input")
+                    score_date = st.date_input("时间", value=date.today(), key="s_date")
+                    add_score = st.number_input("加分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="s_add")
+                    sub_score = st.number_input("扣分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="s_sub")
                 with col3:
-                    student_name_input = st.text_input("当事人（学生姓名）", key="score_student")
-                    reason = st.text_area("原由", key="score_reason")
-                    proof = st.text_input("证明材料（可选）", key="score_proof")
-                
-                submitted = st.form_submit_button("➕ 添加记录")
-                if submitted:
-                    if student_name_input and (add_score > 0 or sub_score > 0) and reason:
+                    student_input = st.text_input("当事人", key="s_stu")
+                    reason = st.text_area("原由", key="s_reason")
+                    proof = st.text_input("证明材料(可选)", key="s_proof")
+                if st.form_submit_button("添加"):
+                    if student_input and (add_score > 0 or sub_score > 0) and reason:
                         df = load_data_csv("score_records")
                         new_row = pd.DataFrame([{
-                            "信息来源": source,
-                            "加扣分方向": direction,
-                            "上报周期": period,
-                            "时间": score_date.strftime("%Y-%m-%d"),
-                            "加分": str(add_score),
-                            "扣分": str(sub_score),
-                            "当事人": student_name_input,
-                            "原由": reason,
+                            "信息来源": source, "加扣分方向": direction, "上报周期": period,
+                            "时间": score_date.strftime("%Y-%m-%d"), "加分": str(add_score),
+                            "扣分": str(sub_score), "当事人": student_input, "原由": reason,
                             "证明材料": proof
                         }])
                         df = pd.concat([df, new_row], ignore_index=True)
                         save_data_csv(df, "score_records")
-                        st.success(f"已为 {student_name_input} 添加记录")
+                        st.success("已添加")
                         st.rerun()
                     else:
-                        st.error("请填写完整信息（当事人、分数、原由）")
-        
+                        st.error("请填写完整")
         df_scores = load_data_csv("score_records")
-        
-        if df_scores.empty:
-            st.info("暂无量化记录，请添加第一条记录")
-            return
-        
-        # 转换数据类型
-        df_scores["加分"] = df_scores["加分"].astype(float)
-        df_scores["扣分"] = df_scores["扣分"].astype(float)
-        df_scores["时间"] = pd.to_datetime(df_scores["时间"], errors='coerce')
-        
-        # ---------- 时间段筛选器 ----------
-        st.subheader("📅 按时间段筛选")
-        col1, col2 = st.columns(2)
-        with col1:
-            min_date = df_scores["时间"].min().date() if not df_scores["时间"].isna().all() else date.today()
-            start_date = st.date_input("开始日期", value=min_date, key="score_start_date")
-        with col2:
-            end_date = st.date_input("结束日期", value=date.today(), key="score_end_date")
-        
-        # 筛选数据
-        mask = (df_scores["时间"] >= pd.Timestamp(start_date)) & (df_scores["时间"] <= pd.Timestamp(end_date))
-        filtered_df = df_scores[mask].copy()
-        
-        st.caption(f"共筛选出 {len(filtered_df)} 条记录（{start_date} 至 {end_date}）")
-        
-        if not filtered_df.empty:
-            # ---------- 学生汇总表格 ----------
-            st.subheader("📊 学生得分汇总")
-            
-            summary = filtered_df.groupby("当事人").apply(
-                lambda x: pd.Series({
-                    "加分合计": x["加分"].sum(),
-                    "扣分合计": x["扣分"].sum(),
-                    "总分": x["加分"].sum() - x["扣分"].sum(),
-                    "记录数": len(x)
-                })
-            ).reset_index()
-            
-            summary = summary.sort_values("总分", ascending=False)
-            
-            st.dataframe(
-                summary,
-                use_container_width=True,
-                column_config={
-                    "当事人": "学生姓名",
-                    "加分合计": st.column_config.NumberColumn("加分合计", format="%.1f"),
-                    "扣分合计": st.column_config.NumberColumn("扣分合计", format="%.1f"),
-                    "总分": st.column_config.NumberColumn("总分", format="%.1f"),
-                    "记录数": "记录数"
-                }
-            )
-            
-            # ---------- 点击学生查看明细 ----------
-            st.subheader("🔍 点击查看学生明细")
-            
-            selected_student = st.selectbox(
-                "选择学生查看明细",
-                options=summary["当事人"].tolist(),
-                key="score_detail_student"
-            )
-            
-            if selected_student:
-                student_detail = filtered_df[filtered_df["当事人"] == selected_student].copy()
-                student_detail = student_detail.sort_values("时间", ascending=False)
-                
-                student_summary = summary[summary["当事人"] == selected_student].iloc[0]
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("加分合计", f"{student_summary['加分合计']:.1f}")
-                col2.metric("扣分合计", f"{student_summary['扣分合计']:.1f}")
-                col3.metric("总分", f"{student_summary['总分']:.1f}")
-                col4.metric("记录数", student_summary['记录数'])
-                
-                st.dataframe(
-                    student_detail[["时间", "信息来源", "加扣分方向", "加分", "扣分", "原由", "证明材料"]],
-                    use_container_width=True,
-                    column_config={
-                        "时间": "时间",
-                        "信息来源": "来源",
-                        "加扣分方向": "方向",
-                        "加分": st.column_config.NumberColumn("加分", format="%.1f"),
-                        "扣分": st.column_config.NumberColumn("扣分", format="%.1f"),
-                        "原由": "原由",
-                        "证明材料": "证明材料"
-                    }
-                )
-                
-                st.subheader("📈 加扣分分布")
-                chart_data = student_detail.groupby("加扣分方向")[["加分", "扣分"]].sum().reset_index()
-                if not chart_data.empty:
-                    st.bar_chart(chart_data.set_index("加扣分方向"))
-            
-            # ---------- 全部明细 ----------
-            with st.expander("📋 查看全部明细记录"):
-                st.dataframe(
-                    filtered_df[["时间", "当事人", "信息来源", "加扣分方向", "加分", "扣分", "原由"]],
-                    use_container_width=True,
-                    column_config={
-                        "时间": "时间",
-                        "当事人": "学生",
-                        "信息来源": "来源",
-                        "加扣分方向": "方向",
-                        "加分": st.column_config.NumberColumn("加分", format="%.1f"),
-                        "扣分": st.column_config.NumberColumn("扣分", format="%.1f"),
-                        "原由": "原由"
-                    }
-                )
-                
-                csv_data = filtered_df.to_csv(index=False).encode('utf-8-sig')
-                st.download_button(
-                    "📥 导出筛选数据 (CSV)",
-                    csv_data,
-                    f"量化记录_{start_date}_至_{end_date}.csv",
-                    "text/csv",
-                    key="export_filtered_scores"
-                )
+        if not df_scores.empty:
+            df_scores["加分"] = df_scores["加分"].astype(float)
+            df_scores["扣分"] = df_scores["扣分"].astype(float)
+            df_scores["时间"] = pd.to_datetime(df_scores["时间"], errors='coerce')
+            col1, col2 = st.columns(2)
+            with col1:
+                start = st.date_input("开始日期", value=df_scores["时间"].min().date() if not df_scores["时间"].isna().all() else date.today(), key="s_start")
+            with col2:
+                end = st.date_input("结束日期", value=date.today(), key="s_end")
+            mask = (df_scores["时间"] >= pd.Timestamp(start)) & (df_scores["时间"] <= pd.Timestamp(end))
+            filtered = df_scores[mask].copy()
+            st.caption(f"共 {len(filtered)} 条记录")
+            if not filtered.empty:
+                summary = filtered.groupby("当事人").apply(lambda x: pd.Series({
+                    "加分合计": x["加分"].sum(), "扣分合计": x["扣分"].sum(),
+                    "总分": x["加分"].sum() - x["扣分"].sum(), "记录数": len(x)
+                })).reset_index().sort_values("总分", ascending=False)
+                st.dataframe(summary, use_container_width=True)
+                stu = st.selectbox("查看明细", summary["当事人"].tolist(), key="s_detail")
+                if stu:
+                    detail = filtered[filtered["当事人"] == stu].sort_values("时间", ascending=False)
+                    st.dataframe(detail[["时间", "信息来源", "加扣分方向", "加分", "扣分", "原由"]], use_container_width=True)
         else:
-            st.info(f"在 {start_date} 至 {end_date} 时间段内暂无记录")
+            st.info("暂无记录")
     
-    # Tab4: AI分析
+    # ===== Tab4: AI分析 =====
     with tab4:
         st.subheader("🤖 AI 综合分析")
         df_info = load_data_csv("student_info")
         if df_info.empty:
-            st.warning("请等待学生填写基本信息后再进行AI分析")
+            st.warning("请等待学生填写基本信息")
         else:
-            if st.button("🔍 生成班级综合分析报告", key="class_analysis_btn"):
-                with st.spinner("AI 正在分析班级整体情况..."):
+            if st.button("生成班级综合分析报告", key="class_ai"):
+                with st.spinner("AI分析中..."):
                     df_awards = load_data_csv("student_awards")
                     df_activities = load_data_csv("student_activities")
                     df_tasks = load_data_csv("student_tasks")
@@ -760,134 +657,106 @@ def teacher_portal():
                     df_scores = load_data_csv("score_records")
                     result = analyze_class_all(df_info, df_awards, df_activities, df_tasks, df_feedback, df_leaves, df_scores)
                     st.markdown(result)
-            
-            st.subheader("👤 查看单个学生AI画像")
-            student_name = st.selectbox("选择学生", df_info["姓名"].tolist(), key="ai_student_select")
-            if student_name and st.button("生成该生AI画像", key="student_ai_btn"):
-                with st.spinner(f"正在为 {student_name} 生成AI画像..."):
-                    student_id = df_info[df_info["姓名"] == student_name]["学号"].iloc[0] if not df_info.empty else ""
-                    analysis = analyze_student(student_name, str(student_id))
-                    st.markdown(analysis)
+            stu = st.selectbox("选择学生查看个人画像", df_info["姓名"].tolist(), key="ai_stu")
+            if stu and st.button("生成个人画像", key="stu_ai"):
+                with st.spinner("生成中..."):
+                    sid = df_info[df_info["姓名"] == stu]["学号"].iloc[0] if not df_info.empty else ""
+                    result = analyze_student(stu, str(sid))
+                    st.markdown(result)
     
-    # Tab5: 发布活动
+    # ===== Tab5: 发布活动 =====
     with tab5:
         st.subheader("📋 发布活动")
         df = load_data_csv("activities_published")
-        with st.form("publish_activity_form"):
+        with st.form("pub_act"):
             col1, col2 = st.columns(2)
             with col1:
-                act_name = st.text_input("活动名称", key="act_name")
-                act_desc = st.text_area("活动描述", key="act_desc")
+                name = st.text_input("活动名称", key="act_n")
+                desc = st.text_area("描述", key="act_d")
             with col2:
-                deadline = st.date_input("报名截止日期", value=date.today(), key="act_deadline")
-                status = st.selectbox("状态", ["进行中", "已结束"], key="act_status")
-            if st.form_submit_button("发布活动") and act_name:
-                new_row = pd.DataFrame([{
-                    "活动名称": act_name, "活动描述": act_desc,
-                    "发布时间": datetime.now().strftime("%Y-%m-%d"),
-                    "截止时间": deadline.strftime("%Y-%m-%d"), "状态": status
-                }])
-                df = pd.concat([df, new_row], ignore_index=True)
+                deadline = st.date_input("截止日期", value=date.today(), key="act_dl")
+                status = st.selectbox("状态", ["进行中", "已结束"], key="act_st")
+            if st.form_submit_button("发布") and name:
+                new = pd.DataFrame([{"活动名称": name, "活动描述": desc, "发布时间": datetime.now().strftime("%Y-%m-%d"), "截止时间": deadline.strftime("%Y-%m-%d"), "状态": status}])
+                df = pd.concat([df, new], ignore_index=True)
                 save_data_csv(df, "activities_published")
-                st.success(f"已发布：{act_name}")
+                st.success("已发布")
                 st.rerun()
         if not df.empty:
             st.dataframe(df, use_container_width=True)
-            df_signups = load_data_csv("student_activities")
-            if not df_signups.empty:
-                with st.expander("📋 报名情况"):
-                    for act in df['活动名称']:
-                        signups = df_signups[df_signups['活动名称'] == act]
-                        if not signups.empty:
-                            st.write(f"**{act}**：{len(signups)}人报名")
-                            st.dataframe(signups[["姓名", "报名时间"]], use_container_width=True)
     
-    # Tab6: 学生荣誉
+    # ===== Tab6: 学生荣誉 =====
     with tab6:
         st.subheader("🏆 学生荣誉")
-        df_awards = load_data_csv("student_awards")
-        if not df_awards.empty:
+        df = load_data_csv("student_awards")
+        if not df.empty:
             col1, col2, col3 = st.columns(3)
-            col1.metric("总荣誉数", len(df_awards))
-            col2.metric("获得荣誉学生数", df_awards["姓名"].nunique())
-            col3.metric("最高级别", df_awards["奖项级别"].max() if not df_awards.empty else "无")
-            level_counts = df_awards["奖项级别"].value_counts()
-            st.bar_chart(level_counts)
-            student_counts = df_awards.groupby("姓名").size().sort_values(ascending=False).head(10)
-            st.bar_chart(student_counts)
-            st.dataframe(df_awards, use_container_width=True)
+            col1.metric("总荣誉数", len(df))
+            col2.metric("获奖人数", df["姓名"].nunique())
+            col3.metric("最高级别", df["奖项级别"].max() if not df.empty else "无")
+            st.dataframe(df, use_container_width=True)
         else:
-            st.info("暂无学生荣誉记录")
+            st.info("暂无数据")
     
-    # Tab7: 任务与反馈
+    # ===== Tab7: 任务与反馈 =====
     with tab7:
         st.subheader("📊 任务完成情况")
-        df_tasks = load_data_csv("student_tasks")
-        if not df_tasks.empty:
-            task_stats = df_tasks.groupby(["任务名称", "完成状态"]).size().reset_index(name='人数')
-            st.dataframe(task_stats, use_container_width=True)
-            st.dataframe(df_tasks, use_container_width=True)
+        df = load_data_csv("student_tasks")
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
         else:
-            st.info("暂无任务数据")
+            st.info("暂无数据")
         st.divider()
         st.subheader("📝 每日反馈")
-        df_feedback = load_data_csv("daily_feedback")
-        if not df_feedback.empty:
-            dates = sorted(df_feedback["日期"].unique(), reverse=True)
-            selected_date = st.selectbox("筛选日期", ["全部"] + list(dates), key="feedback_date")
-            if selected_date != "全部":
-                df_feedback = df_feedback[df_feedback["日期"] == selected_date]
-            st.dataframe(df_feedback, use_container_width=True)
+        df = load_data_csv("daily_feedback")
+        if not df.empty:
+            dates = sorted(df["日期"].unique(), reverse=True)
+            sel = st.selectbox("筛选日期", ["全部"] + list(dates), key="fb_date")
+            if sel != "全部":
+                df = df[df["日期"] == sel]
+            st.dataframe(df, use_container_width=True)
         else:
-            st.info("暂无反馈数据")
+            st.info("暂无数据")
     
-    # Tab8: 请假审批
+    # ===== Tab8: 请假审批 =====
     with tab8:
         st.subheader("📋 请假审批")
         df = load_data_csv("leaves")
         if not df.empty:
             pending = df[df["预审状态"] == "待审批"]
-            if not pending.empty:
-                for idx in pending.index:
-                    row = df.loc[idx]
-                    with st.expander(f"{row['姓名']} - {row['请假日期']} 请假{row['节次']}"):
-                        st.write(f"**事由：** {row['事由']}")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            new_status = st.selectbox("审批结果", ["已批准", "已拒绝"], key=f"leave_status_{idx}")
-                        with col2:
-                            comment = st.text_input("班主任意见", key=f"leave_comment_{idx}")
-                        if st.button("确认审批", key=f"leave_approve_{idx}"):
-                            df.loc[idx, "预审状态"] = str(new_status)
-                            df.loc[idx, "班主任意见"] = str(comment)
-                            save_data_csv(df, "leaves")
-                            st.success("已处理")
-                            st.rerun()
-            else:
-                st.info("暂无待审批请假")
-            with st.expander("全部请假记录"):
-                st.dataframe(df, use_container_width=True)
+            for idx in pending.index:
+                row = df.loc[idx]
+                with st.expander(f"{row['姓名']} - {row['请假日期']}"):
+                    st.write(f"事由：{row['事由']}")
+                    status = st.selectbox("审批", ["已批准", "已拒绝"], key=f"lv_st_{idx}")
+                    comment = st.text_input("意见", key=f"lv_cm_{idx}")
+                    if st.button("确认", key=f"lv_ap_{idx}"):
+                        df.loc[idx, "预审状态"] = status
+                        df.loc[idx, "班主任意见"] = comment
+                        save_data_csv(df, "leaves")
+                        st.success("已处理")
+                        st.rerun()
+            st.dataframe(df, use_container_width=True)
         else:
-            st.info("暂无请假记录")
+            st.info("暂无记录")
     
-    # Tab9: 数据导出
+    # ===== Tab9: 数据导出 =====
     with tab9:
         st.subheader("📥 数据导出")
         zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for filename in os.listdir(DATA_FOLDER):
-                if filename.endswith('.csv'):
-                    filepath = os.path.join(DATA_FOLDER, filename)
-                    zip_file.write(filepath, filename)
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for f in os.listdir(DATA_FOLDER):
+                if f.endswith('.csv'):
+                    zf.write(os.path.join(DATA_FOLDER, f), f)
         zip_buffer.seek(0)
         st.download_button(
-            label="📦 一键导出全部数据 (ZIP压缩包)",
+            label="📦 一键导出全部数据",
             data=zip_buffer,
             file_name=f"班级数据_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
             mime="application/zip",
             key="export_all"
         )
-        st.info("导出后可用Excel打开CSV文件查看所有数据，建议每周备份一次")
+        st.info("建议每周备份一次")
 
 # ---------- 主入口 ----------
 def main():
