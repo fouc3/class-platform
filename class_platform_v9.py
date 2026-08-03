@@ -606,17 +606,33 @@ def teacher_portal():
                     add_score = st.number_input("加分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="s_add")
                     sub_score = st.number_input("扣分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="s_sub")
                 with col3:
-                    # ===== 从学生名单下拉选择 =====
+                    # ===== 多选学生（支持单个、多个、全班） =====
                     if student_names:
-                        student_input = st.selectbox("当事人（选择学生）", student_names, key="s_stu")
+                        all_options = ["【全班】"] + student_names
+                        selected_students = st.multiselect(
+                            "当事人（可选择多个学生）",
+                            options=all_options,
+                            key="s_stu_multi",
+                            placeholder="请选择一名或多名学生..."
+                        )
+                        if "【全班】" in selected_students:
+                            student_input = ",".join(student_names)
+                            st.info(f"✅ 已选择全班同学：共 {len(student_names)} 人")
+                        else:
+                            student_input = ",".join(selected_students) if selected_students else ""
+                            if selected_students:
+                                st.success(f"已选择 {len(selected_students)} 位同学：{', '.join(selected_students)}")
                     else:
                         student_input = st.text_input("当事人（请先上传学生名单）", key="s_stu")
                         st.warning("⚠️ 请先在「学生名单」Tab 上传学生名单")
+                    
                     reason = st.text_area("原由", key="s_reason")
                     proof = st.text_input("证明材料(可选)", key="s_proof")
+                
                 if st.form_submit_button("添加"):
                     if student_input and (add_score > 0 or sub_score > 0) and reason:
                         df = load_data_csv("score_records")
+                        # 多个当事人用逗号分隔存储
                         new_row = pd.DataFrame([{
                             "信息来源": source, "加扣分方向": direction, "上报周期": period,
                             "时间": score_date.strftime("%Y-%m-%d"), "加分": str(add_score),
@@ -625,10 +641,51 @@ def teacher_portal():
                         }])
                         df = pd.concat([df, new_row], ignore_index=True)
                         save_data_csv(df, "score_records")
-                        st.success("已添加")
+                        st.success(f"已添加记录，当事人：{student_input}")
                         st.rerun()
                     else:
                         st.error("请填写完整信息")
+        
+        df_scores = load_data_csv("score_records")
+        if not df_scores.empty:
+            df_scores["加分"] = df_scores["加分"].astype(float)
+            df_scores["扣分"] = df_scores["扣分"].astype(float)
+            df_scores["时间"] = pd.to_datetime(df_scores["时间"], errors='coerce')
+            col1, col2 = st.columns(2)
+            with col1:
+                start = st.date_input("开始日期", value=df_scores["时间"].min().date() if not df_scores["时间"].isna().all() else date.today(), key="s_start")
+            with col2:
+                end = st.date_input("结束日期", value=date.today(), key="s_end")
+            mask = (df_scores["时间"] >= pd.Timestamp(start)) & (df_scores["时间"] <= pd.Timestamp(end))
+            filtered = df_scores[mask].copy()
+            st.caption(f"共 {len(filtered)} 条记录")
+            if not filtered.empty:
+                # 拆分多个当事人进行统计
+                # 先展开数据：每个当事人单独一行
+                expanded_rows = []
+                for _, row in filtered.iterrows():
+                    if "," in row["当事人"]:
+                        for name in row["当事人"].split(","):
+                            name = name.strip()
+                            if name:
+                                new_row = row.copy()
+                                new_row["当事人"] = name
+                                expanded_rows.append(new_row)
+                    else:
+                        expanded_rows.append(row)
+                expanded_df = pd.DataFrame(expanded_rows)
+                
+                summary = expanded_df.groupby("当事人").apply(lambda x: pd.Series({
+                    "加分合计": x["加分"].sum(), "扣分合计": x["扣分"].sum(),
+                    "总分": x["加分"].sum() - x["扣分"].sum(), "记录数": len(x)
+                })).reset_index().sort_values("总分", ascending=False)
+                st.dataframe(summary, use_container_width=True)
+                stu = st.selectbox("查看明细", summary["当事人"].tolist(), key="s_detail")
+                if stu:
+                    detail = expanded_df[expanded_df["当事人"] == stu].sort_values("时间", ascending=False)
+                    st.dataframe(detail[["时间", "信息来源", "加扣分方向", "加分", "扣分", "原由"]], use_container_width=True)
+        else:
+            st.info("暂无记录")
         
         df_scores = load_data_csv("score_records")
         if not df_scores.empty:
