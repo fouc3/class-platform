@@ -93,17 +93,13 @@ def get_student_full_data(student_name, student_id):
     student_leaves = df_leaves[df_leaves["姓名"] == student_name] if not df_leaves.empty else pd.DataFrame()
     student_scores = df_scores[df_scores["当事人"] == student_name] if not df_scores.empty else pd.DataFrame()
 
-    # 计算量化总分
     total_score = 0
     if not student_scores.empty:
-        # 加分列和扣分列都是字符串，需转换
         for _, row in student_scores.iterrows():
-            add = row.get("加分", "0")
-            sub = row.get("扣分", "0")
-            total_score += float(add) if add and add.replace('.', '').isdigit() else 0
-            total_score -= float(sub) if sub and sub.replace('.', '').isdigit() else 0
+            add = float(row.get("加分", "0")) if row.get("加分", "0").replace('.', '').isdigit() else 0
+            sub = float(row.get("扣分", "0")) if row.get("扣分", "0").replace('.', '').isdigit() else 0
+            total_score += add - sub
 
-    # 构建数据摘要（含量化分）
     info_summary = ""
     if not student_info.empty:
         info = student_info.iloc[0]
@@ -156,7 +152,6 @@ def analyze_student(student_name, student_id):
     return call_deepseek_api(prompt, data_summary)
 
 def analyze_class_all(df_info, df_awards, df_activities, df_tasks, df_feedback, df_leaves, df_scores):
-    # 计算班级量化总分
     total_score = 0
     if not df_scores.empty:
         for _, row in df_scores.iterrows():
@@ -260,7 +255,7 @@ def student_portal():
         "📋 参加活动", "✅ 我的任务", "📝 每日反馈", "📋 请假申请"
     ])
     
-    # Tab1: 基本信息（同前，略）
+    # Tab1: 基本信息
     with tab1:
         st.subheader("📋 我的基本信息")
         st.info("请认真填写以下信息，所有信息仅班主任可见")
@@ -324,13 +319,12 @@ def student_portal():
         if not existing.empty:
             st.info("✅ 已填写基本信息，如需修改请直接修改后再次保存")
     
-    # Tab2: 我的量化分（新增）
+    # Tab2: 我的量化分
     with tab2:
         st.subheader("📊 我的量化管理分")
         df_scores = load_data_csv("score_records")
         my_scores = df_scores[df_scores["当事人"] == student_name] if not df_scores.empty else pd.DataFrame()
         
-        # 计算总分
         total_score = 0
         if not my_scores.empty:
             for _, row in my_scores.iterrows():
@@ -351,7 +345,7 @@ def student_portal():
         else:
             st.info("暂无量化记录，继续努力！")
     
-    # Tab3-8: 其余同前，仅把原来的 tab2~7 顺延
+    # Tab3: AI成长画像
     with tab3:
         st.subheader("🤖 AI 成长画像分析")
         df_info = load_data_csv("student_info")
@@ -384,7 +378,7 @@ def student_portal():
             else:
                 st.info("点击按钮生成专属成长画像")
     
-    # Tab4: 我的荣誉（原tab2）
+    # Tab4: 我的荣誉
     with tab4:
         st.subheader("🏆 我的荣誉墙")
         with st.form("add_award_form"):
@@ -412,7 +406,7 @@ def student_portal():
             if not my_awards.empty:
                 st.dataframe(my_awards[["奖项名称", "奖项级别", "获奖时间", "备注"]], use_container_width=True)
     
-    # Tab5: 参加活动（原tab3）
+    # Tab5: 参加活动
     with tab5:
         st.subheader("📋 可报名的活动")
         df_activities = load_data_csv("activities_published")
@@ -448,7 +442,7 @@ def student_portal():
                 if not my_acts.empty:
                     st.dataframe(my_acts[["活动名称", "报名时间", "参与状态"]], use_container_width=True)
     
-    # Tab6: 我的任务（原tab4）
+    # Tab6: 我的任务
     with tab6:
         st.subheader("✅ 我的任务")
         df_tasks = load_data_csv("student_tasks")
@@ -476,7 +470,7 @@ def student_portal():
         else:
             st.info("暂无任务安排")
     
-    # Tab7: 每日反馈（原tab5）
+    # Tab7: 每日反馈
     with tab7:
         with st.form("daily_feedback_form"):
             mood = st.select_slider("今天心情", ["😔很差", "😐一般", "🙂不错", "😄非常好"], key="feedback_mood")
@@ -493,7 +487,7 @@ def student_portal():
                 save_data_csv(df, "daily_feedback")
                 st.success("反馈已提交")
     
-    # Tab8: 请假申请（原tab6）
+    # Tab8: 请假申请
     with tab8:
         with st.form("leave_form_student"):
             col1, col2 = st.columns(2)
@@ -537,7 +531,7 @@ def teacher_portal():
         "🏆 学生荣誉", "📊 任务与反馈", "📋 请假审批", "📥 数据导出"
     ])
     
-    # Tab1: 学生名单（同前，略）
+    # Tab1: 学生名单
     with tab1:
         st.subheader("学生名单管理（登录凭证）")
         uploaded = st.file_uploader("上传学生名单（Excel：姓名、学号两列）", type=["xlsx"], key="upload_list")
@@ -546,4 +540,58 @@ def teacher_portal():
             df.to_excel(STUDENT_LIST_FILE, index=False)
             st.success(f"已更新，共{len(df)}人")
             st.rerun()
-        if os.path.exists
+        if os.path.exists(STUDENT_LIST_FILE):
+            df = pd.read_excel(STUDENT_LIST_FILE, engine='openpyxl', dtype=str).fillna("")
+            st.dataframe(df, use_container_width=True)
+            with st.expander("手动添加"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    new_name = st.text_input("姓名", key="add_name")
+                with col2:
+                    new_id = st.text_input("学号", key="add_id")
+                if st.button("添加", key="add_btn"):
+                    if new_name and new_id:
+                        new_row = pd.DataFrame([{"姓名": new_name, "学号": new_id}])
+                        df = pd.concat([df, new_row], ignore_index=True)
+                        df.to_excel(STUDENT_LIST_FILE, index=False)
+                        st.rerun()
+    
+    # Tab2: 学生信息
+    with tab2:
+        st.subheader("📋 学生基本信息档案")
+        df_info = load_data_csv("student_info")
+        if not df_info.empty:
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("已填写学生数", len(df_info))
+            col2.metric("男生", len(df_info[df_info["性别"] == "男"]))
+            col3.metric("女生", len(df_info[df_info["性别"] == "女"]))
+            avg_age = df_info[df_info["年龄"].str.isdigit()]["年龄"].astype(float).mean() if len(df_info[df_info["年龄"].str.isdigit()]) > 0 else 0
+            col4.metric("平均年龄", f"{avg_age:.1f}")
+            st.subheader("家庭性质分布")
+            family_counts = df_info["家庭性质"].value_counts()
+            st.bar_chart(family_counts)
+            st.subheader("详细信息")
+            st.dataframe(df_info, use_container_width=True)
+            csv_data = df_info.to_csv(index=False).encode('utf-8-sig')
+            st.download_button("📥 导出学生基本信息", csv_data, "学生基本信息.csv", "text/csv", key="export_info")
+        else:
+            st.info("暂无学生填写基本信息")
+    
+    # Tab3: 量化管理
+    with tab3:
+        st.subheader("📊 班级量化管理")
+        st.info("添加或查看全班学生的加扣分记录")
+        
+        # 添加记录
+        with st.form("add_score_form"):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                source = st.selectbox("信息来源", get_score_sources(), key="score_source")
+                direction = st.selectbox("加扣分方向", get_score_directions(), key="score_direction")
+                period = st.selectbox("上报周期", get_score_periods(), key="score_period")
+            with col2:
+                score_date = st.date_input("时间", value=date.today(), key="score_date")
+                add_score = st.number_input("加分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="add_score")
+                sub_score = st.number_input("扣分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="sub_score")
+            with col3:
+                student_name = st
