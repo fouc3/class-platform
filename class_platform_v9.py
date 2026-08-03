@@ -120,7 +120,13 @@ def get_student_full_data(student_name, student_id):
             awards_summary += f"  - {a.get('奖项名称')}（{a.get('奖项级别')}）\n"
 
     activities_summary = f"- 参加活动：{len(student_activities)}次\n"
-    tasks_summary = f"- 任务完成：{len(student_tasks[student_tasks['完成状态']=='已完成'])}/ {len(student_tasks)}项\n"
+    
+    # ===== 任务完成情况（安全版本 - 修复 KeyError） =====
+    if not student_tasks.empty and '完成状态' in student_tasks.columns:
+        completed_count = len(student_tasks[student_tasks['完成状态'] == '已完成'])
+        tasks_summary = f"- 任务完成：{completed_count}/ {len(student_tasks)}项\n"
+    else:
+        tasks_summary = "- 任务完成：暂无任务数据\n"
     
     score_summary = f"""
 【量化管理】（总分：{total_score:.1f}分）
@@ -159,7 +165,7 @@ def analyze_class_all(df_info, df_awards, df_activities, df_tasks, df_feedback, 
             sub = float(row.get("扣分", "0")) if row.get("扣分", "0").replace('.','').isdigit() else 0
             total_score += add - sub
     task_completion_rate = 0
-    if len(df_tasks) > 0:
+    if len(df_tasks) > 0 and '完成状态' in df_tasks.columns:
         task_completion_rate = len(df_tasks[df_tasks['完成状态']=='已完成']) / len(df_tasks) * 100
     context = f"""
 【班级概况】总人数：{len(df_info)}人
@@ -214,14 +220,14 @@ def get_academic_status():
 def get_professional_status():
     return ["优秀", "良好", "中等", "及格", "需努力", "基础薄弱"]
 
+def get_score_directions():
+    return ["学习", "纪律", "卫生", "活动", "品德", "其他"]
+
 def get_score_sources():
     return ["班长", "副班长", "学习委员", "文体委员", "卫生防疫员"]
 
-def get_score_directions():
-    return ["晨会","自习纪律","储备人才库","综合管理人才库","专业技能库人才","文体宣传人才库","黑板报","教室/公区/绿化带/楼道卫生","寝室卫生","志愿服务库人才"]
-
 def get_score_periods():
-    return ["日", "周", "月"]
+    return ["日", "周", "月", "一次性"]
 
 # ---------- 学生端 ----------
 def student_portal():
@@ -530,7 +536,6 @@ def teacher_login():
 def teacher_portal():
     st.header("📊 教师管理平台")
     
-    # 创建所有标签页
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
         "👥 学生名单", "📋 学生信息", "📊 量化管理", "🤖 AI分析", 
         "📋 发布活动", "🏆 学生荣誉", "📊 任务与反馈", "📋 请假审批", "📥 数据导出"
