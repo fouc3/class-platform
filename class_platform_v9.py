@@ -214,14 +214,15 @@ def get_academic_status():
 def get_professional_status():
     return ["优秀", "良好", "中等", "及格", "需努力", "基础薄弱"]
 
-def get_score_directions():
-    return ["学习", "纪律", "卫生", "活动", "品德", "其他"]
-
 def get_score_sources():
-    return ["班级日志", "老师巡查", "班干部记录", "同学反馈", "公开表扬", "其他"]
+    return ["班长", "副班长", "学习委员", "文体委员", "卫生防疫员"]
+
+def get_score_directions():
+    return ["晨会","自习纪律","储备人才库","综合管理人才库","专业技能库人才","文体宣传人才库","黑板报"教室/公区/绿化带/楼道卫生","寝室卫生",
+"志愿服务库人才"]
 
 def get_score_periods():
-    return ["日", "周", "月", "一次性"]
+    return ["日", "周", "月"]
 
 # ---------- 学生端 ----------
 def student_portal():
