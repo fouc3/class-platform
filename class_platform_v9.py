@@ -6,7 +6,8 @@ import zipfile
 import io
 import json
 
-st.set_page_config(page_title="班级量化管理平台", layout="wide")
+# ---------- 网站标题配置 ----------
+st.set_page_config(page_title="班级学生成长平台", layout="wide")
 
 # ---------- 配置 ----------
 TEACHER_PASSWORD = "123456"
@@ -591,7 +592,4 @@ def teacher_portal():
                 period = st.selectbox("上报周期", get_score_periods(), key="score_period")
             with col2:
                 score_date = st.date_input("时间", value=date.today(), key="score_date")
-                add_score = st.number_input("加分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="add_score")
-                sub_score = st.number_input("扣分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="sub_score")
-            with col3:
-                student_name = st
+                add_score = st.number_input("加分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="add_score
