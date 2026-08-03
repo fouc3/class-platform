@@ -4,7 +4,6 @@ from datetime import datetime, date
 import os
 import zipfile
 import io
-import json
 
 # ---------- 网站标题配置 ----------
 st.set_page_config(page_title="班级学生成长平台", layout="wide")
@@ -159,11 +158,14 @@ def analyze_class_all(df_info, df_awards, df_activities, df_tasks, df_feedback, 
             add = float(row.get("加分", "0")) if row.get("加分", "0").replace('.','').isdigit() else 0
             sub = float(row.get("扣分", "0")) if row.get("扣分", "0").replace('.','').isdigit() else 0
             total_score += add - sub
+    task_completion_rate = 0
+    if len(df_tasks) > 0:
+        task_completion_rate = len(df_tasks[df_tasks['完成状态']=='已完成']) / len(df_tasks) * 100
     context = f"""
 【班级概况】总人数：{len(df_info)}人
 【荣誉统计】总荣誉数：{len(df_awards)}项
 【活动参与】总人次：{len(df_activities)}次
-【任务完成】总任务数：{len(df_tasks)}项，完成率：{len(df_tasks[df_tasks['完成状态']=='已完成'])/len(df_tasks)*100 if len(df_tasks)>0 else 0:.1f}%
+【任务完成】总任务数：{len(df_tasks)}项，完成率：{task_completion_rate:.1f}%
 【量化管理】班级总量化分：{total_score:.1f}分，加分记录{len(df_scores[df_scores['加分'].astype(float)>0]) if not df_scores.empty else 0}条，扣分记录{len(df_scores[df_scores['扣分'].astype(float)>0]) if not df_scores.empty else 0}条
 """
     prompt = """根据以上数据，按以下格式生成班级分析报告：
@@ -591,5 +593,4 @@ def teacher_portal():
                 direction = st.selectbox("加扣分方向", get_score_directions(), key="score_direction")
                 period = st.selectbox("上报周期", get_score_periods(), key="score_period")
             with col2:
-                score_date = st.date_input("时间", value=date.today(), key="score_date")
-                add_score = st.number_input("加分", min_value=0.0, max_value=100.0, value=0.0, step=0.5, key="add_score
+                score_date = st
