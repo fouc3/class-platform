@@ -344,7 +344,7 @@ def student_portal():
     ])
     
     # ==================== Tab1: 学生基本信息（35项，全中文） ====================
-       # ==================== Tab1: 学生基本信息（35项，全中文） ====================
+      # ==================== Tab1: 学生基本信息（35项，年龄实时更新） ====================
     with tab1:
         st.subheader("📋 学生基本信息档案")
         st.info("请认真填写以下信息，所有信息仅班主任可见，严格保密")
@@ -357,9 +357,11 @@ def student_portal():
             for col in existing.columns:
                 existing_data[col] = existing.iloc[0][col] if pd.notna(existing.iloc[0][col]) else ""
         
-        id_card_valid = False
-        phone_valid = False
-        auto_age = ""
+        # 身份证验证和年龄计算（放在表单外部，实时更新）
+        id_card_key = f"id_card_input_{student_name}"
+        
+        # 用 st.text_input 在表单外部显示年龄（实时更新）
+        age_display = existing_data.get("年龄", "")
         
         with st.form("student_info_form_final", clear_on_submit=False):
             st.markdown("---")
@@ -382,7 +384,7 @@ def student_portal():
             # 5. 性格特点
             st.text_input("5. 性格特点", value=existing_data.get("性格特点", ""), key="f5_personality")
             
-            # 6. 身份证号码
+            # 6. 身份证号码（表单内部）
             st.markdown("**6. 身份证号码**")
             id_card_input = st.text_input(
                 "身份证号码", 
@@ -391,107 +393,6 @@ def student_portal():
                 placeholder="请输入18位身份证号码（最后一位可能是数字或X）",
                 label_visibility="collapsed"
             )
-            
-            id_card_error = ""
-            id_card_valid = False
-            auto_age = ""
-            
-            if id_card_input:
-                id_card_clean = id_card_input.strip().upper()
-                id_len = len(id_card_clean)
-                
-                if id_len < 18:
-                    id_card_error = f"⚠️ 当前已输入 {id_len} 位，身份证号码需要18位"
-                elif id_len > 18:
-                    id_card_error = f"⚠️ 当前已输入 {id_len} 位，身份证号码只能18位"
-                elif not id_card_clean[:17].isdigit():
-                    id_card_error = "❌ 身份证号码前17位必须为数字"
-                elif id_card_clean[17] not in "0123456789X":
-                    id_card_error = "❌ 身份证号码最后一位只能为数字或字母X"
-                else:
-                    try:
-                        weight = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
-                        check_code = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
-                        total = 0
-                        for i in range(17):
-                            total += int(id_card_clean[i]) * weight[i]
-                        if check_code[total % 11] != id_card_clean[17]:
-                            id_card_error = "❌ 身份证号码校验位错误，请核对"
-                        else:
-                            id_card_valid = True
-                            birth_str = id_card_clean[6:14]
-                            birth_date = datetime.strptime(birth_str, "%Y%m%d")
-                            today = datetime.now()
-                            age = today.year - birth_date.year
-                            if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
-                                age -= 1
-                            auto_age = str(age)
-                    except:
-                        id_card_error = "❌ 身份证号码格式错误"
-            
-            if id_card_input:
-                if id_card_valid:
-                    st.success("✅ 身份证号码验证通过")
-                else:
-                    st.error(id_card_error)
-            else:
-                st.caption("💡 请填写18位身份证号码，填写后自动计算年龄")
-            
-            # 7. 年龄（自动计算 - 直接显示在框内）
-            st.markdown("**7. 年龄（自动计算）**")
-            if auto_age:
-                st.text_input("年龄", value=auto_age, disabled=True, key="f7_age", label_visibility="collapsed")
-            else:
-                existing_age = existing_data.get("年龄", "")
-                st.text_input("年龄", value=existing_age, disabled=True, key="f7_age", label_visibility="collapsed")
-                if id_card_input and not id_card_valid:
-                    st.caption("⚠️ 请先输入正确的身份证号码")
-                elif not id_card_input:
-                    st.caption("💡 填写身份证号码后将自动显示年龄")
-            
-            # 8. 手机号码
-            st.markdown("**8. 手机号码**")
-            phone_input = st.text_input(
-                "手机号码", 
-                value=existing_data.get("手机号", ""), 
-                key="f8_phone",
-                placeholder="请输入11位手机号码",
-                label_visibility="collapsed"
-            )
-            
-            if phone_input:
-                phone_clean = phone_input.strip()
-                phone_len = len(phone_clean)
-                
-                if phone_len < 11:
-                    st.warning(f"⚠️ 当前已输入 {phone_len} 位，手机号码需要11位")
-                elif phone_len > 11:
-                    st.warning(f"⚠️ 当前已输入 {phone_len} 位，手机号码只能11位")
-                elif not phone_clean.isdigit():
-                    st.error("❌ 手机号码必须为数字")
-                elif phone_clean.startswith(('1', '9')):
-                    phone_valid = True
-                    st.success("✅ 手机号码格式正确")
-                else:
-                    st.error("❌ 手机号码格式错误，请以1或9开头")
-            else:
-                st.caption("💡 请填写11位手机号码")
-            
-            # 9. 初中毕业学校
-            st.text_input("9. 初中毕业学校", value=existing_data.get("初中毕业学校", ""), key="f9_middle")
-            
-            # 10. 中考总分
-            st.text_input("10. 中考总分", value=existing_data.get("中考总分", ""), key="f10_exam")
-            
-            # 11. 有无初中毕业证
-            cert_idx = 0 if existing_data.get("有无初中毕业证", "有") == "有" else 1
-            st.selectbox("11. 有无初中毕业证", ["有", "无"], index=cert_idx, key="f11_cert")
-            
-            # 12. 常住地址
-            st.text_area("12. 常住地址", value=existing_data.get("常住地址", ""), key="f12_address", height=68)
-            
-            # 13. 户籍地址
-            st.text_area("13. 户籍地址（身份证或户口本地址）", value=existing_data.get("户籍地址", ""), key="f13_hometown", height=68)
             
             st.markdown("---")
             st.markdown("### 👨‍👩‍👧‍👦 家庭情况")
@@ -648,14 +549,139 @@ def student_portal():
             )
             
             st.markdown("---")
+            
+            # 手机号码（放在表单内）
+            st.markdown("**8. 手机号码**")
+            phone_input = st.text_input(
+                "手机号码", 
+                value=existing_data.get("手机号", ""), 
+                key="f8_phone",
+                placeholder="请输入11位手机号码",
+                label_visibility="collapsed"
+            )
+            
+            # 7. 年龄（放在表单内，但数据在提交时更新）
+            st.markdown("**7. 年龄（自动计算）**")
+            # 如果身份证输入框有值且有效，用计算后的年龄，否则用已有数据
+            if id_card_input:
+                # 重新计算年龄
+                id_card_clean = id_card_input.strip().upper()
+                if len(id_card_clean) == 18 and id_card_clean[:17].isdigit() and id_card_clean[17] in "0123456789X":
+                    try:
+                        weight = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
+                        check_code = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
+                        total = 0
+                        for i in range(17):
+                            total += int(id_card_clean[i]) * weight[i]
+                        if check_code[total % 11] == id_card_clean[17]:
+                            birth_str = id_card_clean[6:14]
+                            birth_date = datetime.strptime(birth_str, "%Y%m%d")
+                            today = datetime.now()
+                            age = today.year - birth_date.year
+                            if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
+                                age -= 1
+                            age_display = str(age)
+                    except:
+                        age_display = existing_data.get("年龄", "")
+                else:
+                    age_display = existing_data.get("年龄", "")
+            else:
+                age_display = existing_data.get("年龄", "")
+            
+            st.text_input("年龄", value=age_display, disabled=True, key="f7_age", label_visibility="collapsed")
+            
+            # 验证提示
+            if id_card_input:
+                id_card_clean = id_card_input.strip().upper()
+                id_len = len(id_card_clean)
+                if id_len < 18:
+                    st.error(f"⚠️ 当前已输入 {id_len} 位，身份证号码需要18位")
+                elif id_len > 18:
+                    st.error(f"⚠️ 当前已输入 {id_len} 位，身份证号码只能18位")
+                elif not id_card_clean[:17].isdigit():
+                    st.error("❌ 身份证号码前17位必须为数字")
+                elif id_card_clean[17] not in "0123456789X":
+                    st.error("❌ 身份证号码最后一位只能为数字或字母X")
+                else:
+                    try:
+                        weight = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
+                        check_code = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
+                        total = 0
+                        for i in range(17):
+                            total += int(id_card_clean[i]) * weight[i]
+                        if check_code[total % 11] != id_card_clean[17]:
+                            st.error("❌ 身份证号码校验位错误，请核对")
+                        else:
+                            st.success("✅ 身份证号码验证通过")
+                    except:
+                        st.error("❌ 身份证号码格式错误")
+            else:
+                st.caption("💡 请填写18位身份证号码，填写后自动计算年龄")
+            
+            if phone_input:
+                phone_clean = phone_input.strip()
+                phone_len = len(phone_clean)
+                if phone_len < 11:
+                    st.warning(f"⚠️ 当前已输入 {phone_len} 位，手机号码需要11位")
+                elif phone_len > 11:
+                    st.warning(f"⚠️ 当前已输入 {phone_len} 位，手机号码只能11位")
+                elif not phone_clean.isdigit():
+                    st.error("❌ 手机号码必须为数字")
+                elif phone_clean.startswith(('1', '9')):
+                    st.success("✅ 手机号码格式正确")
+                else:
+                    st.error("❌ 手机号码格式错误，请以1或9开头")
+            else:
+                st.caption("💡 请填写11位手机号码")
+            
+            # 9. 初中毕业学校
+            st.text_input("9. 初中毕业学校", value=existing_data.get("初中毕业学校", ""), key="f9_middle")
+            
+            # 10. 中考总分
+            st.text_input("10. 中考总分", value=existing_data.get("中考总分", ""), key="f10_exam")
+            
+            # 11. 有无初中毕业证
+            cert_idx = 0 if existing_data.get("有无初中毕业证", "有") == "有" else 1
+            st.selectbox("11. 有无初中毕业证", ["有", "无"], index=cert_idx, key="f11_cert")
+            
+            # 12. 常住地址
+            st.text_area("12. 常住地址", value=existing_data.get("常住地址", ""), key="f12_address", height=68)
+            
+            # 13. 户籍地址
+            st.text_area("13. 户籍地址（身份证或户口本地址）", value=existing_data.get("户籍地址", ""), key="f13_hometown", height=68)
+            
+            st.markdown("---")
             submitted = st.form_submit_button("💾 保存全部信息")
             
             if submitted:
-                if id_card_input and not id_card_valid:
+                # 验证身份证和手机号
+                id_valid = False
+                if id_card_input:
+                    id_clean = id_card_input.strip().upper()
+                    if len(id_clean) == 18 and id_clean[:17].isdigit() and id_clean[17] in "0123456789X":
+                        try:
+                            weight = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
+                            check_code = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
+                            total = 0
+                            for i in range(17):
+                                total += int(id_clean[i]) * weight[i]
+                            if check_code[total % 11] == id_clean[17]:
+                                id_valid = True
+                        except:
+                            pass
+                
+                phone_valid = False
+                if phone_input:
+                    phone_clean = phone_input.strip()
+                    if len(phone_clean) == 11 and phone_clean.isdigit() and phone_clean.startswith(('1', '9')):
+                        phone_valid = True
+                
+                if id_card_input and not id_valid:
                     st.error("❌ 身份证号码验证未通过，请修正后再保存")
                 elif phone_input and not phone_valid:
                     st.error("❌ 手机号码验证未通过，请修正后再保存")
                 else:
+                    # 收集所有数据
                     data = {
                         "姓名": student_name,
                         "性别": st.session_state.get("f2_gender", ""),
