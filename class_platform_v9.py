@@ -344,7 +344,7 @@ def student_portal():
     ])
     
     # ==================== Tab1: 学生基本信息（35项） ====================
-        # ==================== Tab1: 学生基本信息（35项，含身份证/手机号验证） ====================
+       # ==================== Tab1: 学生基本信息（35项，含身份证/手机号验证，全中文） ====================
     with tab1:
         st.subheader("📋 学生基本信息档案")
         st.info("请认真填写以下信息，所有信息仅班主任可见，严格保密")
@@ -389,7 +389,7 @@ def student_portal():
                 value=existing_data.get("身份证号", ""), 
                 key="f6_idcard", 
                 placeholder="请输入18位身份证号码",
-                help="身份证号码为18位，最后一位可能是数字或X"
+                help="身份证号码为18位，最后一位可能是数字或字母X"
             )
             
             # 身份证验证逻辑
@@ -404,7 +404,7 @@ def student_portal():
                 elif not id_card_clean[:17].isdigit():
                     id_card_error = "❌ 身份证号码前17位必须为数字"
                 elif id_card_clean[17] not in "0123456789X":
-                    id_card_error = "❌ 身份证号码最后一位只能为数字或X"
+                    id_card_error = "❌ 身份证号码最后一位只能为数字或字母X"
                 else:
                     # 校验位验证
                     try:
@@ -457,7 +457,7 @@ def student_portal():
             if phone_input:
                 phone_clean = phone_input.strip()
                 if len(phone_clean) == 11 and phone_clean.isdigit():
-                    if phone_clean.startswith(('1', '9')):  # 中国大陆手机号以1或9开头
+                    if phone_clean.startswith(('1', '9')):
                         phone_valid = True
                         st.success("✅ 手机号码格式正确")
                     else:
