@@ -344,6 +344,7 @@ def student_portal():
     ])
     
     # ==================== Tab1: 学生基本信息（35项，全中文） ====================
+       # ==================== Tab1: 学生基本信息（35项，全中文） ====================
     with tab1:
         st.subheader("📋 学生基本信息档案")
         st.info("请认真填写以下信息，所有信息仅班主任可见，严格保密")
@@ -436,16 +437,15 @@ def student_portal():
             else:
                 st.caption("💡 请填写18位身份证号码，填写后自动计算年龄")
             
-            # 7. 年龄（自动计算）
+            # 7. 年龄（自动计算 - 直接显示在框内）
             st.markdown("**7. 年龄（自动计算）**")
             if auto_age:
                 st.text_input("年龄", value=auto_age, disabled=True, key="f7_age", label_visibility="collapsed")
-                st.success(f"✅ 根据身份证计算年龄为：{auto_age}岁")
             else:
                 existing_age = existing_data.get("年龄", "")
                 st.text_input("年龄", value=existing_age, disabled=True, key="f7_age", label_visibility="collapsed")
                 if id_card_input and not id_card_valid:
-                    st.warning("⚠️ 请先输入正确的身份证号码")
+                    st.caption("⚠️ 请先输入正确的身份证号码")
                 elif not id_card_input:
                     st.caption("💡 填写身份证号码后将自动显示年龄")
             
