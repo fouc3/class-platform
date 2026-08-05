@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
@@ -344,7 +345,7 @@ def student_portal():
     ])
     
     # ==================== Tab1: 学生基本信息（35项，全中文） ====================
-      # ==================== Tab1: 学生基本信息（35项，年龄实时更新） ====================
+        # ==================== Tab1: 学生基本信息（35项，年龄实时更新） ====================
     with tab1:
         st.subheader("📋 学生基本信息档案")
         st.info("请认真填写以下信息，所有信息仅班主任可见，严格保密")
@@ -357,381 +358,381 @@ def student_portal():
             for col in existing.columns:
                 existing_data[col] = existing.iloc[0][col] if pd.notna(existing.iloc[0][col]) else ""
         
-        # 身份证验证和年龄计算（放在表单外部，实时更新）
-        id_card_key = f"id_card_input_{student_name}"
+        st.markdown("---")
+        st.markdown("### 📌 基本信息")
         
-        # 用 st.text_input 在表单外部显示年龄（实时更新）
-        age_display = existing_data.get("年龄", "")
+        # 1. 姓名（放在表单外面，因为不需要修改）
+        st.text_input("1. 姓名", value=student_name, disabled=True, key="f1_name_outside")
         
-        with st.form("student_info_form_final", clear_on_submit=False):
-            st.markdown("---")
-            st.markdown("### 📌 基本信息")
+        # 2. 性别（放在表单外面，以便快速响应）
+        gender_idx = get_gender_options().index(existing_data.get("性别", "男")) if existing_data.get("性别") in get_gender_options() else 0
+        gender = st.selectbox("2. 性别", get_gender_options(), index=gender_idx, key="f2_gender_outside")
+        
+        # 3. 民族（放在表单外面）
+        nation_idx = get_nation_options().index(existing_data.get("民族", "汉族")) if existing_data.get("民族") in get_nation_options() else 0
+        nation = st.selectbox("3. 民族", get_nation_options(), index=nation_idx, key="f3_nation_outside")
+        
+        # 4. 特长或爱好（放在表单外面）
+        hobby = st.text_input("4. 特长或爱好", value=existing_data.get("特长爱好", ""), key="f4_hobby_outside")
+        
+        # 5. 性格特点（放在表单外面）
+        personality = st.text_input("5. 性格特点", value=existing_data.get("性格特点", ""), key="f5_personality_outside")
+        
+        # 6. 身份证号码（放在表单外面，实时更新年龄）
+        st.markdown("**6. 身份证号码**")
+        id_card_input = st.text_input(
+            "身份证号码", 
+            value=existing_data.get("身份证号", ""), 
+            key="f6_idcard_outside", 
+            placeholder="请输入18位身份证号码（最后一位可能是数字或X）",
+            label_visibility="collapsed"
+        )
+        
+        # ===== 实时计算年龄（修改身份证后立即更新） =====
+        id_card_valid = False
+        auto_age = ""
+        id_card_error = ""
+        
+        if id_card_input:
+            id_card_clean = id_card_input.strip().upper()
+            id_len = len(id_card_clean)
             
-            # 1. 姓名
-            st.text_input("1. 姓名", value=student_name, disabled=True, key="f1_name")
-            
-            # 2. 性别
-            gender_idx = get_gender_options().index(existing_data.get("性别", "男")) if existing_data.get("性别") in get_gender_options() else 0
-            st.selectbox("2. 性别", get_gender_options(), index=gender_idx, key="f2_gender")
-            
-            # 3. 民族
-            nation_idx = get_nation_options().index(existing_data.get("民族", "汉族")) if existing_data.get("民族") in get_nation_options() else 0
-            st.selectbox("3. 民族", get_nation_options(), index=nation_idx, key="f3_nation")
-            
-            # 4. 特长或爱好
-            st.text_input("4. 特长或爱好", value=existing_data.get("特长爱好", ""), key="f4_hobby")
-            
-            # 5. 性格特点
-            st.text_input("5. 性格特点", value=existing_data.get("性格特点", ""), key="f5_personality")
-            
-            # 6. 身份证号码（表单内部）
-            st.markdown("**6. 身份证号码**")
-            id_card_input = st.text_input(
-                "身份证号码", 
-                value=existing_data.get("身份证号", ""), 
-                key="f6_idcard", 
-                placeholder="请输入18位身份证号码（最后一位可能是数字或X）",
-                label_visibility="collapsed"
-            )
-            
-            st.markdown("---")
-            st.markdown("### 👨‍👩‍👧‍👦 家庭情况")
-            
-            # 14. 家庭基本情况
-            family_type_idx = get_family_type_options().index(existing_data.get("家庭基本情况", "原生家庭完整")) if existing_data.get("家庭基本情况") in get_family_type_options() else 0
-            st.radio("14. 家庭基本情况", get_family_type_options(), index=family_type_idx, key="f14_family_type")
-            
-            # 15. 家庭成员
-            default_members = existing_data.get("家庭成员", "").split(",") if existing_data.get("家庭成员") else []
-            st.caption("💡 请在下拉框中选择家庭成员（可多选）")
-            family_members = st.multiselect(
-                "15. 家庭成员", 
-                get_family_member_options(), 
-                default=default_members, 
-                key="f15_family_members",
-                placeholder="请选择家庭成员",
-                help="可以选择多个家庭成员"
-            )
-            family_members_str = ",".join(family_members) if family_members else ""
-            
-            # 16. 家庭教育方法
-            default_edu = existing_data.get("家庭教育方法", "").split(",") if existing_data.get("家庭教育方法") else []
-            st.caption("💡 请在下拉框中选择家庭教育方法（可多选）")
-            st.multiselect(
-                "16. 家庭教育方法", 
-                get_education_method_options(), 
-                default=default_edu, 
-                key="f16_edu_methods",
-                placeholder="请选择家庭教育方法",
-                help="可以选择多个选项"
-            )
-            
-            # 17. 兄弟姐妹信息
-            sibling_types = ["哥哥", "姐姐", "弟弟", "妹妹", "其他"]
-            has_siblings = any(m in family_members for m in sibling_types)
-            if has_siblings:
-                st.text_input("17. 兄弟姐妹信息（姓名|关系|年龄，多条用逗号分隔）", 
-                             value=existing_data.get("兄弟姐妹信息", ""), 
-                             key="f17_sibling",
-                             placeholder="例如：张三|哥哥|18,李四|妹妹|15")
+            if id_len < 18:
+                id_card_error = f"⚠️ 当前已输入 {id_len} 位，身份证号码需要18位"
+            elif id_len > 18:
+                id_card_error = f"⚠️ 当前已输入 {id_len} 位，身份证号码只能18位"
+            elif not id_card_clean[:17].isdigit():
+                id_card_error = "❌ 身份证号码前17位必须为数字"
+            elif id_card_clean[17] not in "0123456789X":
+                id_card_error = "❌ 身份证号码最后一位只能为数字或字母X"
             else:
-                st.text_input("17. 兄弟姐妹信息", value="无兄弟姐妹", disabled=True, key="f17_sibling_disabled")
-                st.info("💡 未选择兄弟姐妹，此项不可编辑")
-            
-            # 18. 是否留守
-            leave_idx = 0 if existing_data.get("是否留守", "否") == "否" else 1
-            leave_behind = st.radio("18. 是否留守", get_leave_behind_options(), index=leave_idx, key="f18_leave")
-            
-            # 19. 父母工作情况
-            has_father_or_mother = "爸爸" in family_members or "妈妈" in family_members
-            if leave_behind == "是" and has_father_or_mother:
-                work_idx = get_parent_work_options().index(existing_data.get("父母工作情况", "爸爸外地工作")) if existing_data.get("父母工作情况") in get_parent_work_options() else 0
-                st.selectbox("19. 父母工作情况", get_parent_work_options(), index=work_idx, key="f19_parent_work")
+                try:
+                    weight = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
+                    check_code = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
+                    total = 0
+                    for i in range(17):
+                        total += int(id_card_clean[i]) * weight[i]
+                    if check_code[total % 11] != id_card_clean[17]:
+                        id_card_error = "❌ 身份证号码校验位错误，请核对"
+                    else:
+                        id_card_valid = True
+                        birth_str = id_card_clean[6:14]
+                        birth_date = datetime.strptime(birth_str, "%Y%m%d")
+                        today = datetime.now()
+                        age = today.year - birth_date.year
+                        if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
+                            age -= 1
+                        auto_age = str(age)
+                except:
+                    id_card_error = "❌ 身份证号码格式错误"
+        
+        # 显示身份证验证结果（实时）
+        if id_card_input:
+            if id_card_valid:
+                st.success("✅ 身份证号码验证通过")
             else:
-                if leave_behind == "是" and not has_father_or_mother:
-                    st.text_input("19. 父母工作情况", value="请先在家庭成员中选择爸爸或妈妈", disabled=True, key="f19_parent_work_disabled")
-                    st.warning("⚠️ 您选择了留守，但家庭成员中未选择爸爸或妈妈")
-                else:
-                    st.text_input("19. 父母工作情况", value="未选择留守，此项不可编辑", disabled=True, key="f19_parent_work_disabled2")
-            
-            st.markdown("---")
-            st.markdown("### 📞 监护人信息")
-            
-            # 20-22. 爸爸信息
-            if "爸爸" in family_members:
-                st.markdown("**👨 爸爸信息**")
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.text_input("20. 爸爸姓名", value=existing_data.get("爸爸姓名", ""), key="f20_dad_name")
-                with col2:
-                    st.text_input("21. 爸爸身份证号码", value=existing_data.get("爸爸身份证号", ""), key="f21_dad_id")
-                with col3:
-                    st.text_input("22. 爸爸常用联系电话", value=existing_data.get("爸爸联系电话", ""), key="f22_dad_phone")
-            else:
-                st.text_input("20. 爸爸姓名", value="未选择爸爸", disabled=True, key="f20_dad_name_dis")
-                st.text_input("21. 爸爸身份证号码", value="未选择爸爸", disabled=True, key="f21_dad_id_dis")
-                st.text_input("22. 爸爸常用联系电话", value="未选择爸爸", disabled=True, key="f22_dad_phone_dis")
-                st.info("💡 未选择爸爸，此项不可编辑")
-            
-            # 23-25. 妈妈信息
-            if "妈妈" in family_members:
-                st.markdown("**👩 妈妈信息**")
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.text_input("23. 妈妈姓名", value=existing_data.get("妈妈姓名", ""), key="f23_mom_name")
-                with col2:
-                    st.text_input("24. 妈妈身份证号码", value=existing_data.get("妈妈身份证号", ""), key="f24_mom_id")
-                with col3:
-                    st.text_input("25. 妈妈常用联系电话", value=existing_data.get("妈妈联系电话", ""), key="f25_mom_phone")
-            else:
-                st.text_input("23. 妈妈姓名", value="未选择妈妈", disabled=True, key="f23_mom_name_dis")
-                st.text_input("24. 妈妈身份证号码", value="未选择妈妈", disabled=True, key="f24_mom_id_dis")
-                st.text_input("25. 妈妈常用联系电话", value="未选择妈妈", disabled=True, key="f25_mom_phone_dis")
-                st.info("💡 未选择妈妈，此项不可编辑")
-            
-            # 26-29. 其他监护人信息
-            has_other = any(m not in ["爸爸", "妈妈"] for m in family_members)
-            if has_other:
-                st.markdown("**👤 其他监护人信息**")
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.text_input("26. 其他监护人姓名", value=existing_data.get("其他监护人姓名", ""), key="f26_other_name")
-                with col2:
-                    st.text_input("27. 其他监护人和本人关系", value=existing_data.get("其他监护人和本人关系", ""), key="f27_other_relation")
-                with col3:
-                    st.text_input("28. 其他监护人身份证号码", value=existing_data.get("其他监护人身份证号", ""), key="f28_other_id")
-                with col4:
-                    st.text_input("29. 其他监护人联系电话", value=existing_data.get("其他监护人联系电话", ""), key="f29_other_phone")
-            else:
-                st.text_input("26. 其他监护人姓名", value="无其他监护人", disabled=True, key="f26_other_name_dis")
-                st.text_input("27. 其他监护人和本人关系", value="无其他监护人", disabled=True, key="f27_other_relation_dis")
-                st.text_input("28. 其他监护人身份证号码", value="无其他监护人", disabled=True, key="f28_other_id_dis")
-                st.text_input("29. 其他监护人联系电话", value="无其他监护人", disabled=True, key="f29_other_phone_dis")
-                st.info("💡 未选择除父母外的其他监护人，此项不可编辑")
-            
-            st.markdown("---")
-            st.markdown("### 🎯 个人发展")
-            
-            # 30. 选择专业原因
-            st.text_area("30. 选择农村电气技术（计算机方向）专业的原因", 
-                         value=existing_data.get("选择专业原因", ""), 
-                         key="f30_reason", height=68)
-            
-            # 31. 未来打算
-            future_idx = get_future_plan_options().index(existing_data.get("未来打算", "升学")) if existing_data.get("未来打算") in get_future_plan_options() else 0
-            st.radio("31. 你对未来的打算", get_future_plan_options(), index=future_idx, key="f31_future")
-            
-            # 32. 曾任职务
-            st.text_input("32. 曾在班上担任什么职务", value=existing_data.get("曾任职务", ""), key="f32_position")
-            
-            # 33. 曾患疾病
-            default_past = existing_data.get("曾患疾病", "").split(",") if existing_data.get("曾患疾病") else []
-            st.caption("💡 请在下拉框中选择曾患疾病（可多选）")
-            st.multiselect(
-                "33. 曾经是否患过什么大病", 
-                get_disease_options(), 
-                default=default_past, 
-                key="f33_past_diseases",
-                placeholder="请选择曾患疾病",
-                help="可以选择多个选项"
-            )
-            
-            # 34. 现患疾病
-            default_now = existing_data.get("现患疾病", "").split(",") if existing_data.get("现患疾病") else []
-            st.caption("💡 请在下拉框中选择现患疾病（可多选）")
-            st.multiselect(
-                "34. 现在是否患过什么大病", 
-                get_disease_options(), 
-                default=default_now, 
-                key="f34_now_diseases",
-                placeholder="请选择现患疾病",
-                help="可以选择多个选项"
-            )
-            
-            st.markdown("---")
-            
-            # 手机号码（放在表单内）
-            st.markdown("**8. 手机号码**")
-            phone_input = st.text_input(
-                "手机号码", 
-                value=existing_data.get("手机号", ""), 
-                key="f8_phone",
-                placeholder="请输入11位手机号码",
-                label_visibility="collapsed"
-            )
-            
-            # 7. 年龄（放在表单内，但数据在提交时更新）
-            st.markdown("**7. 年龄（自动计算）**")
-            # 如果身份证输入框有值且有效，用计算后的年龄，否则用已有数据
-            if id_card_input:
-                # 重新计算年龄
-                id_card_clean = id_card_input.strip().upper()
-                if len(id_card_clean) == 18 and id_card_clean[:17].isdigit() and id_card_clean[17] in "0123456789X":
-                    try:
-                        weight = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
-                        check_code = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
-                        total = 0
-                        for i in range(17):
-                            total += int(id_card_clean[i]) * weight[i]
-                        if check_code[total % 11] == id_card_clean[17]:
-                            birth_str = id_card_clean[6:14]
-                            birth_date = datetime.strptime(birth_str, "%Y%m%d")
-                            today = datetime.now()
-                            age = today.year - birth_date.year
-                            if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
-                                age -= 1
-                            age_display = str(age)
-                    except:
-                        age_display = existing_data.get("年龄", "")
-                else:
-                    age_display = existing_data.get("年龄", "")
-            else:
+                st.error(id_card_error)
+        else:
+            st.caption("💡 请填写18位身份证号码，填写后自动计算年龄")
+        
+        # 7. 年龄（放在表单外面，实时更新）
+        st.markdown("**7. 年龄（自动计算）**")
+        if auto_age:
+            age_display = auto_age
+            st.text_input("年龄", value=age_display, disabled=True, key="f7_age_outside", label_visibility="collapsed")
+        else:
+            # 如果身份证为空或无效，显示已有的年龄或留空
+            if not id_card_input:
                 age_display = existing_data.get("年龄", "")
-            
-            st.text_input("年龄", value=age_display, disabled=True, key="f7_age", label_visibility="collapsed")
-            
-            # 验证提示
+                st.text_input("年龄", value=age_display, disabled=True, key="f7_age_outside", label_visibility="collapsed")
+                st.caption("💡 填写身份证号码后将自动显示年龄")
+            else:
+                st.text_input("年龄", value="", disabled=True, key="f7_age_outside", label_visibility="collapsed")
+                if id_card_error:
+                    st.caption("⚠️ 请修正身份证号码")
+        
+        # 8. 手机号码（放在表单外面，实时验证）
+        st.markdown("**8. 手机号码**")
+        phone_input = st.text_input(
+            "手机号码", 
+            value=existing_data.get("手机号", ""), 
+            key="f8_phone_outside",
+            placeholder="请输入11位手机号码",
+            label_visibility="collapsed"
+        )
+        
+        # 手机号验证（实时）
+        phone_valid = False
+        if phone_input:
+            phone_clean = phone_input.strip()
+            phone_len = len(phone_clean)
+            if phone_len < 11:
+                st.warning(f"⚠️ 当前已输入 {phone_len} 位，手机号码需要11位")
+            elif phone_len > 11:
+                st.warning(f"⚠️ 当前已输入 {phone_len} 位，手机号码只能11位")
+            elif not phone_clean.isdigit():
+                st.error("❌ 手机号码必须为数字")
+            elif phone_clean.startswith(('1', '9')):
+                phone_valid = True
+                st.success("✅ 手机号码格式正确")
+            else:
+                st.error("❌ 手机号码格式错误，请以1或9开头")
+        else:
+            st.caption("💡 请填写11位手机号码")
+        
+        # 9. 初中毕业学校（放在表单外面）
+        middle_school = st.text_input("9. 初中毕业学校", value=existing_data.get("初中毕业学校", ""), key="f9_middle_outside")
+        
+        # 10. 中考总分（放在表单外面）
+        exam_score = st.text_input("10. 中考总分", value=existing_data.get("中考总分", ""), key="f10_exam_outside")
+        
+        # 11. 有无初中毕业证（放在表单外面）
+        cert_idx = 0 if existing_data.get("有无初中毕业证", "有") == "有" else 1
+        cert = st.selectbox("11. 有无初中毕业证", ["有", "无"], index=cert_idx, key="f11_cert_outside")
+        
+        # 12. 常住地址（放在表单外面）
+        address = st.text_area("12. 常住地址", value=existing_data.get("常住地址", ""), key="f12_address_outside", height=68)
+        
+        # 13. 户籍地址（放在表单外面）
+        hometown = st.text_area("13. 户籍地址（身份证或户口本地址）", value=existing_data.get("户籍地址", ""), key="f13_hometown_outside", height=68)
+        
+        st.markdown("---")
+        st.markdown("### 👨‍👩‍👧‍👦 家庭情况")
+        
+        # 14. 家庭基本情况（放在表单外面）
+        family_type_idx = get_family_type_options().index(existing_data.get("家庭基本情况", "原生家庭完整")) if existing_data.get("家庭基本情况") in get_family_type_options() else 0
+        family_type = st.radio("14. 家庭基本情况", get_family_type_options(), index=family_type_idx, key="f14_family_type_outside")
+        
+        # 15. 家庭成员（放在表单外面）
+        default_members = existing_data.get("家庭成员", "").split(",") if existing_data.get("家庭成员") else []
+        st.caption("💡 请在下拉框中选择家庭成员（可多选）")
+        family_members = st.multiselect(
+            "15. 家庭成员", 
+            get_family_member_options(), 
+            default=default_members, 
+            key="f15_family_members_outside",
+            placeholder="请选择家庭成员"
+        )
+        family_members_str = ",".join(family_members) if family_members else ""
+        
+        # 16. 家庭教育方法（放在表单外面）
+        default_edu = existing_data.get("家庭教育方法", "").split(",") if existing_data.get("家庭教育方法") else []
+        st.caption("💡 请在下拉框中选择家庭教育方法（可多选）")
+        edu_methods = st.multiselect(
+            "16. 家庭教育方法", 
+            get_education_method_options(), 
+            default=default_edu, 
+            key="f16_edu_methods_outside",
+            placeholder="请选择家庭教育方法"
+        )
+        edu_methods_str = ",".join(edu_methods) if edu_methods else ""
+        
+        # 17. 兄弟姐妹信息（放在表单外面）
+        sibling_types = ["哥哥", "姐姐", "弟弟", "妹妹", "其他"]
+        has_siblings = any(m in family_members for m in sibling_types)
+        if has_siblings:
+            sibling_info = st.text_input(
+                "17. 兄弟姐妹信息（姓名|关系|年龄，多条用逗号分隔）", 
+                value=existing_data.get("兄弟姐妹信息", ""), 
+                key="f17_sibling_outside",
+                placeholder="例如：张三|哥哥|18,李四|妹妹|15"
+            )
+        else:
+            sibling_info = st.text_input("17. 兄弟姐妹信息", value="无兄弟姐妹", disabled=True, key="f17_sibling_disabled_outside")
+            st.info("💡 未选择兄弟姐妹，此项不可编辑")
+        
+        # 18. 是否留守（放在表单外面）
+        leave_idx = 0 if existing_data.get("是否留守", "否") == "否" else 1
+        leave_behind = st.radio("18. 是否留守", get_leave_behind_options(), index=leave_idx, key="f18_leave_outside")
+        
+        # 19. 父母工作情况（放在表单外面）
+        has_father_or_mother = "爸爸" in family_members or "妈妈" in family_members
+        if leave_behind == "是" and has_father_or_mother:
+            work_idx = get_parent_work_options().index(existing_data.get("父母工作情况", "爸爸外地工作")) if existing_data.get("父母工作情况") in get_parent_work_options() else 0
+            parent_work = st.selectbox("19. 父母工作情况", get_parent_work_options(), index=work_idx, key="f19_parent_work_outside")
+        else:
+            if leave_behind == "是" and not has_father_or_mother:
+                parent_work = st.text_input("19. 父母工作情况", value="请先在家庭成员中选择爸爸或妈妈", disabled=True, key="f19_parent_work_disabled_outside")
+                st.warning("⚠️ 您选择了留守，但家庭成员中未选择爸爸或妈妈")
+            else:
+                parent_work = st.text_input("19. 父母工作情况", value="未选择留守，此项不可编辑", disabled=True, key="f19_parent_work_disabled2_outside")
+        
+        st.markdown("---")
+        st.markdown("### 📞 监护人信息")
+        
+        # 20-22. 爸爸信息（放在表单外面）
+        if "爸爸" in family_members:
+            st.markdown("**👨 爸爸信息**")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                dad_name = st.text_input("20. 爸爸姓名", value=existing_data.get("爸爸姓名", ""), key="f20_dad_name_outside")
+            with col2:
+                dad_id = st.text_input("21. 爸爸身份证号码", value=existing_data.get("爸爸身份证号", ""), key="f21_dad_id_outside")
+            with col3:
+                dad_phone = st.text_input("22. 爸爸常用联系电话", value=existing_data.get("爸爸联系电话", ""), key="f22_dad_phone_outside")
+        else:
+            dad_name = st.text_input("20. 爸爸姓名", value="未选择爸爸", disabled=True, key="f20_dad_name_dis_outside")
+            dad_id = st.text_input("21. 爸爸身份证号码", value="未选择爸爸", disabled=True, key="f21_dad_id_dis_outside")
+            dad_phone = st.text_input("22. 爸爸常用联系电话", value="未选择爸爸", disabled=True, key="f22_dad_phone_dis_outside")
+            st.info("💡 未选择爸爸，此项不可编辑")
+        
+        # 23-25. 妈妈信息（放在表单外面）
+        if "妈妈" in family_members:
+            st.markdown("**👩 妈妈信息**")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                mom_name = st.text_input("23. 妈妈姓名", value=existing_data.get("妈妈姓名", ""), key="f23_mom_name_outside")
+            with col2:
+                mom_id = st.text_input("24. 妈妈身份证号码", value=existing_data.get("妈妈身份证号", ""), key="f24_mom_id_outside")
+            with col3:
+                mom_phone = st.text_input("25. 妈妈常用联系电话", value=existing_data.get("妈妈联系电话", ""), key="f25_mom_phone_outside")
+        else:
+            mom_name = st.text_input("23. 妈妈姓名", value="未选择妈妈", disabled=True, key="f23_mom_name_dis_outside")
+            mom_id = st.text_input("24. 妈妈身份证号码", value="未选择妈妈", disabled=True, key="f24_mom_id_dis_outside")
+            mom_phone = st.text_input("25. 妈妈常用联系电话", value="未选择妈妈", disabled=True, key="f25_mom_phone_dis_outside")
+            st.info("💡 未选择妈妈，此项不可编辑")
+        
+        # 26-29. 其他监护人信息（放在表单外面）
+        has_other = any(m not in ["爸爸", "妈妈"] for m in family_members)
+        if has_other:
+            st.markdown("**👤 其他监护人信息**")
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                other_name = st.text_input("26. 其他监护人姓名", value=existing_data.get("其他监护人姓名", ""), key="f26_other_name_outside")
+            with col2:
+                other_relation = st.text_input("27. 其他监护人和本人关系", value=existing_data.get("其他监护人和本人关系", ""), key="f27_other_relation_outside")
+            with col3:
+                other_id = st.text_input("28. 其他监护人身份证号码", value=existing_data.get("其他监护人身份证号", ""), key="f28_other_id_outside")
+            with col4:
+                other_phone = st.text_input("29. 其他监护人联系电话", value=existing_data.get("其他监护人联系电话", ""), key="f29_other_phone_outside")
+        else:
+            other_name = st.text_input("26. 其他监护人姓名", value="无其他监护人", disabled=True, key="f26_other_name_dis_outside")
+            other_relation = st.text_input("27. 其他监护人和本人关系", value="无其他监护人", disabled=True, key="f27_other_relation_dis_outside")
+            other_id = st.text_input("28. 其他监护人身份证号码", value="无其他监护人", disabled=True, key="f28_other_id_dis_outside")
+            other_phone = st.text_input("29. 其他监护人联系电话", value="无其他监护人", disabled=True, key="f29_other_phone_dis_outside")
+            st.info("💡 未选择除父母外的其他监护人，此项不可编辑")
+        
+        st.markdown("---")
+        st.markdown("### 🎯 个人发展")
+        
+        # 30. 选择专业原因（放在表单外面）
+        reason = st.text_area("30. 选择农村电气技术（计算机方向）专业的原因", 
+                     value=existing_data.get("选择专业原因", ""), 
+                     key="f30_reason_outside", height=68)
+        
+        # 31. 未来打算（放在表单外面）
+        future_idx = get_future_plan_options().index(existing_data.get("未来打算", "升学")) if existing_data.get("未来打算") in get_future_plan_options() else 0
+        future_plan = st.radio("31. 你对未来的打算", get_future_plan_options(), index=future_idx, key="f31_future_outside")
+        
+        # 32. 曾任职务（放在表单外面）
+        position = st.text_input("32. 曾在班上担任什么职务", value=existing_data.get("曾任职务", ""), key="f32_position_outside")
+        
+        # 33. 曾患疾病（放在表单外面）
+        default_past = existing_data.get("曾患疾病", "").split(",") if existing_data.get("曾患疾病") else []
+        st.caption("💡 请在下拉框中选择曾患疾病（可多选）")
+        past_diseases = st.multiselect(
+            "33. 曾经是否患过什么大病", 
+            get_disease_options(), 
+            default=default_past, 
+            key="f33_past_diseases_outside",
+            placeholder="请选择曾患疾病"
+        )
+        past_diseases_str = ",".join(past_diseases) if past_diseases else ""
+        
+        # 34. 现患疾病（放在表单外面）
+        default_now = existing_data.get("现患疾病", "").split(",") if existing_data.get("现患疾病") else []
+        st.caption("💡 请在下拉框中选择现患疾病（可多选）")
+        now_diseases = st.multiselect(
+            "34. 现在是否患过什么大病", 
+            get_disease_options(), 
+            default=default_now, 
+            key="f34_now_diseases_outside",
+            placeholder="请选择现患疾病"
+        )
+        now_diseases_str = ",".join(now_diseases) if now_diseases else ""
+        
+        st.markdown("---")
+        
+        # ===== 保存按钮（放在表单外面，使用 st.button） =====
+        if st.button("💾 保存全部信息", key="save_all_outside"):
+            # 验证身份证和手机号
+            id_valid = False
             if id_card_input:
-                id_card_clean = id_card_input.strip().upper()
-                id_len = len(id_card_clean)
-                if id_len < 18:
-                    st.error(f"⚠️ 当前已输入 {id_len} 位，身份证号码需要18位")
-                elif id_len > 18:
-                    st.error(f"⚠️ 当前已输入 {id_len} 位，身份证号码只能18位")
-                elif not id_card_clean[:17].isdigit():
-                    st.error("❌ 身份证号码前17位必须为数字")
-                elif id_card_clean[17] not in "0123456789X":
-                    st.error("❌ 身份证号码最后一位只能为数字或字母X")
-                else:
+                id_clean = id_card_input.strip().upper()
+                if len(id_clean) == 18 and id_clean[:17].isdigit() and id_clean[17] in "0123456789X":
                     try:
                         weight = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
                         check_code = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
                         total = 0
                         for i in range(17):
-                            total += int(id_card_clean[i]) * weight[i]
-                        if check_code[total % 11] != id_card_clean[17]:
-                            st.error("❌ 身份证号码校验位错误，请核对")
-                        else:
-                            st.success("✅ 身份证号码验证通过")
+                            total += int(id_clean[i]) * weight[i]
+                        if check_code[total % 11] == id_clean[17]:
+                            id_valid = True
                     except:
-                        st.error("❌ 身份证号码格式错误")
-            else:
-                st.caption("💡 请填写18位身份证号码，填写后自动计算年龄")
+                        pass
             
+            phone_valid = False
             if phone_input:
                 phone_clean = phone_input.strip()
-                phone_len = len(phone_clean)
-                if phone_len < 11:
-                    st.warning(f"⚠️ 当前已输入 {phone_len} 位，手机号码需要11位")
-                elif phone_len > 11:
-                    st.warning(f"⚠️ 当前已输入 {phone_len} 位，手机号码只能11位")
-                elif not phone_clean.isdigit():
-                    st.error("❌ 手机号码必须为数字")
-                elif phone_clean.startswith(('1', '9')):
-                    st.success("✅ 手机号码格式正确")
-                else:
-                    st.error("❌ 手机号码格式错误，请以1或9开头")
+                if len(phone_clean) == 11 and phone_clean.isdigit() and phone_clean.startswith(('1', '9')):
+                    phone_valid = True
+            
+            if id_card_input and not id_valid:
+                st.error("❌ 身份证号码验证未通过，请修正后再保存")
+            elif phone_input and not phone_valid:
+                st.error("❌ 手机号码验证未通过，请修正后再保存")
             else:
-                st.caption("💡 请填写11位手机号码")
-            
-            # 9. 初中毕业学校
-            st.text_input("9. 初中毕业学校", value=existing_data.get("初中毕业学校", ""), key="f9_middle")
-            
-            # 10. 中考总分
-            st.text_input("10. 中考总分", value=existing_data.get("中考总分", ""), key="f10_exam")
-            
-            # 11. 有无初中毕业证
-            cert_idx = 0 if existing_data.get("有无初中毕业证", "有") == "有" else 1
-            st.selectbox("11. 有无初中毕业证", ["有", "无"], index=cert_idx, key="f11_cert")
-            
-            # 12. 常住地址
-            st.text_area("12. 常住地址", value=existing_data.get("常住地址", ""), key="f12_address", height=68)
-            
-            # 13. 户籍地址
-            st.text_area("13. 户籍地址（身份证或户口本地址）", value=existing_data.get("户籍地址", ""), key="f13_hometown", height=68)
-            
-            st.markdown("---")
-            submitted = st.form_submit_button("💾 保存全部信息")
-            
-            if submitted:
-                # 验证身份证和手机号
-                id_valid = False
-                if id_card_input:
-                    id_clean = id_card_input.strip().upper()
-                    if len(id_clean) == 18 and id_clean[:17].isdigit() and id_clean[17] in "0123456789X":
-                        try:
-                            weight = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
-                            check_code = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
-                            total = 0
-                            for i in range(17):
-                                total += int(id_clean[i]) * weight[i]
-                            if check_code[total % 11] == id_clean[17]:
-                                id_valid = True
-                        except:
-                            pass
+                # 收集所有数据
+                data = {
+                    "姓名": student_name,
+                    "性别": st.session_state.get("f2_gender_outside", ""),
+                    "民族": st.session_state.get("f3_nation_outside", ""),
+                    "特长爱好": st.session_state.get("f4_hobby_outside", ""),
+                    "性格特点": st.session_state.get("f5_personality_outside", ""),
+                    "身份证号": st.session_state.get("f6_idcard_outside", ""),
+                    "年龄": st.session_state.get("f7_age_outside", ""),
+                    "手机号": st.session_state.get("f8_phone_outside", ""),
+                    "初中毕业学校": st.session_state.get("f9_middle_outside", ""),
+                    "中考总分": st.session_state.get("f10_exam_outside", ""),
+                    "有无初中毕业证": st.session_state.get("f11_cert_outside", ""),
+                    "常住地址": st.session_state.get("f12_address_outside", ""),
+                    "户籍地址": st.session_state.get("f13_hometown_outside", ""),
+                    "家庭基本情况": st.session_state.get("f14_family_type_outside", ""),
+                    "家庭成员": family_members_str,
+                    "家庭教育方法": edu_methods_str,
+                    "兄弟姐妹信息": st.session_state.get("f17_sibling_outside", "") if has_siblings else "无兄弟姐妹",
+                    "是否留守": st.session_state.get("f18_leave_outside", ""),
+                    "父母工作情况": st.session_state.get("f19_parent_work_outside", "") if (leave_behind == "是" and has_father_or_mother) else "",
+                    "爸爸姓名": st.session_state.get("f20_dad_name_outside", "") if "爸爸" in family_members else "",
+                    "爸爸身份证号": st.session_state.get("f21_dad_id_outside", "") if "爸爸" in family_members else "",
+                    "爸爸联系电话": st.session_state.get("f22_dad_phone_outside", "") if "爸爸" in family_members else "",
+                    "妈妈姓名": st.session_state.get("f23_mom_name_outside", "") if "妈妈" in family_members else "",
+                    "妈妈身份证号": st.session_state.get("f24_mom_id_outside", "") if "妈妈" in family_members else "",
+                    "妈妈联系电话": st.session_state.get("f25_mom_phone_outside", "") if "妈妈" in family_members else "",
+                    "其他监护人姓名": st.session_state.get("f26_other_name_outside", "") if has_other else "",
+                    "其他监护人和本人关系": st.session_state.get("f27_other_relation_outside", "") if has_other else "",
+                    "其他监护人身份证号": st.session_state.get("f28_other_id_outside", "") if has_other else "",
+                    "其他监护人联系电话": st.session_state.get("f29_other_phone_outside", "") if has_other else "",
+                    "选择专业原因": st.session_state.get("f30_reason_outside", ""),
+                    "未来打算": st.session_state.get("f31_future_outside", ""),
+                    "曾任职务": st.session_state.get("f32_position_outside", ""),
+                    "曾患疾病": past_diseases_str,
+                    "现患疾病": now_diseases_str,
+                    "最后更新时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
                 
-                phone_valid = False
-                if phone_input:
-                    phone_clean = phone_input.strip()
-                    if len(phone_clean) == 11 and phone_clean.isdigit() and phone_clean.startswith(('1', '9')):
-                        phone_valid = True
-                
-                if id_card_input and not id_valid:
-                    st.error("❌ 身份证号码验证未通过，请修正后再保存")
-                elif phone_input and not phone_valid:
-                    st.error("❌ 手机号码验证未通过，请修正后再保存")
+                if not existing.empty:
+                    idx = df_info[df_info["姓名"] == student_name].index[0]
+                    for key, value in data.items():
+                        if key in df_info.columns:
+                            df_info.at[idx, key] = str(value)
                 else:
-                    # 收集所有数据
-                    data = {
-                        "姓名": student_name,
-                        "性别": st.session_state.get("f2_gender", ""),
-                        "民族": st.session_state.get("f3_nation", ""),
-                        "特长爱好": st.session_state.get("f4_hobby", ""),
-                        "性格特点": st.session_state.get("f5_personality", ""),
-                        "身份证号": st.session_state.get("f6_idcard", ""),
-                        "年龄": st.session_state.get("f7_age", ""),
-                        "手机号": st.session_state.get("f8_phone", ""),
-                        "初中毕业学校": st.session_state.get("f9_middle", ""),
-                        "中考总分": st.session_state.get("f10_exam", ""),
-                        "有无初中毕业证": st.session_state.get("f11_cert", ""),
-                        "常住地址": st.session_state.get("f12_address", ""),
-                        "户籍地址": st.session_state.get("f13_hometown", ""),
-                        "家庭基本情况": st.session_state.get("f14_family_type", ""),
-                        "家庭成员": family_members_str,
-                        "家庭教育方法": ",".join(st.session_state.get("f16_edu_methods", [])) if st.session_state.get("f16_edu_methods") else "",
-                        "兄弟姐妹信息": st.session_state.get("f17_sibling", "") if has_siblings else "无兄弟姐妹",
-                        "是否留守": st.session_state.get("f18_leave", ""),
-                        "父母工作情况": st.session_state.get("f19_parent_work", "") if (leave_behind == "是" and has_father_or_mother) else "",
-                        "爸爸姓名": st.session_state.get("f20_dad_name", "") if "爸爸" in family_members else "",
-                        "爸爸身份证号": st.session_state.get("f21_dad_id", "") if "爸爸" in family_members else "",
-                        "爸爸联系电话": st.session_state.get("f22_dad_phone", "") if "爸爸" in family_members else "",
-                        "妈妈姓名": st.session_state.get("f23_mom_name", "") if "妈妈" in family_members else "",
-                        "妈妈身份证号": st.session_state.get("f24_mom_id", "") if "妈妈" in family_members else "",
-                        "妈妈联系电话": st.session_state.get("f25_mom_phone", "") if "妈妈" in family_members else "",
-                        "其他监护人姓名": st.session_state.get("f26_other_name", "") if has_other else "",
-                        "其他监护人和本人关系": st.session_state.get("f27_other_relation", "") if has_other else "",
-                        "其他监护人身份证号": st.session_state.get("f28_other_id", "") if has_other else "",
-                        "其他监护人联系电话": st.session_state.get("f29_other_phone", "") if has_other else "",
-                        "选择专业原因": st.session_state.get("f30_reason", ""),
-                        "未来打算": st.session_state.get("f31_future", ""),
-                        "曾任职务": st.session_state.get("f32_position", ""),
-                        "曾患疾病": ",".join(st.session_state.get("f33_past_diseases", [])) if st.session_state.get("f33_past_diseases") else "",
-                        "现患疾病": ",".join(st.session_state.get("f34_now_diseases", [])) if st.session_state.get("f34_now_diseases") else "",
-                        "最后更新时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    }
-                    
-                    if not existing.empty:
-                        idx = df_info[df_info["姓名"] == student_name].index[0]
-                        for key, value in data.items():
-                            if key in df_info.columns:
-                                df_info.at[idx, key] = str(value)
-                    else:
-                        new_row = pd.DataFrame([data])
-                        df_info = pd.concat([df_info, new_row], ignore_index=True)
-                    
-                    save_data_csv(df_info, "student_info_new")
-                    st.success("✅ 所有信息已保存成功！")
-                    st.rerun()
+                    new_row = pd.DataFrame([data])
+                    df_info = pd.concat([df_info, new_row], ignore_index=True)
+                
+                save_data_csv(df_info, "student_info_new")
+                st.success("✅ 所有信息已保存成功！")
+                st.rerun()
         
         if not existing.empty:
             st.info("📌 已保存的基本信息可以在此修改，修改后点击保存即可更新。")
