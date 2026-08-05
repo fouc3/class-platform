@@ -344,6 +344,7 @@ def student_portal():
     ])
     
     # ==================== Tab1: 学生基本信息（35项） ====================
+        # ==================== Tab1: 学生基本信息（35项，含身份证/手机号验证） ====================
     with tab1:
         st.subheader("📋 学生基本信息档案")
         st.info("请认真填写以下信息，所有信息仅班主任可见，严格保密")
@@ -355,6 +356,11 @@ def student_portal():
         if not existing.empty:
             for col in existing.columns:
                 existing_data[col] = existing.iloc[0][col] if pd.notna(existing.iloc[0][col]) else ""
+        
+        # 用于存储验证状态
+        id_card_valid = False
+        phone_valid = False
+        auto_age = ""
         
         with st.form("student_info_form_final", clear_on_submit=False):
             st.markdown("---")
@@ -377,22 +383,90 @@ def student_portal():
             # 5. 性格特点
             st.text_input("5. 性格特点", value=existing_data.get("性格特点", ""), key="f5_personality")
             
-            # 6. 身份证号码
-            id_card = st.text_input("6. 身份证号码", value=existing_data.get("身份证号", ""), key="f6_idcard", placeholder="请输入18位身份证号码")
+            # 6. 身份证号码（带验证）
+            id_card_input = st.text_input(
+                "6. 身份证号码", 
+                value=existing_data.get("身份证号", ""), 
+                key="f6_idcard", 
+                placeholder="请输入18位身份证号码",
+                help="身份证号码为18位，最后一位可能是数字或X"
+            )
             
-            # 7. 年龄（自动计算）
-            if id_card and len(str(id_card)) >= 18:
-                auto_age = calculate_age(id_card)
+            # 身份证验证逻辑
+            id_card_error = ""
+            id_card_valid = False
+            auto_age = ""
+            
+            if id_card_input:
+                id_card_clean = id_card_input.strip().upper()
+                if len(id_card_clean) != 18:
+                    id_card_error = "❌ 身份证号码必须为18位"
+                elif not id_card_clean[:17].isdigit():
+                    id_card_error = "❌ 身份证号码前17位必须为数字"
+                elif id_card_clean[17] not in "0123456789X":
+                    id_card_error = "❌ 身份证号码最后一位只能为数字或X"
+                else:
+                    # 校验位验证
+                    try:
+                        weight = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
+                        check_code = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
+                        total = 0
+                        for i in range(17):
+                            total += int(id_card_clean[i]) * weight[i]
+                        if check_code[total % 11] != id_card_clean[17]:
+                            id_card_error = "❌ 身份证号码校验位错误，请核对"
+                        else:
+                            id_card_valid = True
+                            # 计算年龄
+                            birth_str = id_card_clean[6:14]
+                            birth_date = datetime.strptime(birth_str, "%Y%m%d")
+                            today = datetime.now()
+                            age = today.year - birth_date.year
+                            if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
+                                age -= 1
+                            auto_age = str(age)
+                    except:
+                        id_card_error = "❌ 身份证号码格式错误"
+            
+            # 显示身份证验证结果
+            if id_card_input:
+                if id_card_valid:
+                    st.success("✅ 身份证号码验证通过")
+                else:
+                    st.error(id_card_error)
+            
+            # 7. 年龄（自动计算，显示在框里）
+            if auto_age:
                 st.text_input("7. 年龄（自动计算）", value=auto_age, disabled=True, key="f7_age")
-                if auto_age:
-                    st.info(f"✅ 根据身份证计算年龄为：{auto_age}岁")
+                st.info(f"✅ 根据身份证计算年龄为：{auto_age}岁")
             else:
-                st.text_input("7. 年龄（自动计算）", value=existing_data.get("年龄", ""), disabled=True, key="f7_age")
-                if id_card and len(str(id_card)) < 18 and id_card:
-                    st.warning("⚠️ 请输入完整的18位身份证号以自动计算年龄")
+                existing_age = existing_data.get("年龄", "")
+                st.text_input("7. 年龄（自动计算）", value=existing_age, disabled=True, key="f7_age")
+                if id_card_input and not id_card_valid:
+                    st.warning("⚠️ 请先输入正确的身份证号码")
             
-            # 8. 手机号码
-            st.text_input("8. 手机号码", value=existing_data.get("手机号", ""), key="f8_phone")
+            # 8. 手机号码（带验证）
+            phone_input = st.text_input(
+                "8. 手机号码", 
+                value=existing_data.get("手机号", ""), 
+                key="f8_phone",
+                placeholder="请输入11位手机号码"
+            )
+            
+            # 手机号验证
+            if phone_input:
+                phone_clean = phone_input.strip()
+                if len(phone_clean) == 11 and phone_clean.isdigit():
+                    if phone_clean.startswith(('1', '9')):  # 中国大陆手机号以1或9开头
+                        phone_valid = True
+                        st.success("✅ 手机号码格式正确")
+                    else:
+                        st.error("❌ 手机号码格式错误，请以1或9开头")
+                else:
+                    if len(phone_clean) != 11:
+                        st.error(f"❌ 手机号码必须为11位，当前为{len(phone_clean)}位")
+                    else:
+                        st.error("❌ 手机号码必须为数字")
             
             # 9. 初中毕业学校
             st.text_input("9. 初中毕业学校", value=existing_data.get("初中毕业学校", ""), key="f9_middle")
@@ -536,57 +610,63 @@ def student_portal():
             submitted = st.form_submit_button("💾 保存全部信息")
             
             if submitted:
-                # 收集所有数据
-                data = {
-                    "姓名": student_name,
-                    "性别": st.session_state.get("f2_gender", ""),
-                    "民族": st.session_state.get("f3_nation", ""),
-                    "特长爱好": st.session_state.get("f4_hobby", ""),
-                    "性格特点": st.session_state.get("f5_personality", ""),
-                    "身份证号": st.session_state.get("f6_idcard", ""),
-                    "年龄": st.session_state.get("f7_age", ""),
-                    "手机号": st.session_state.get("f8_phone", ""),
-                    "初中毕业学校": st.session_state.get("f9_middle", ""),
-                    "中考总分": st.session_state.get("f10_exam", ""),
-                    "有无初中毕业证": st.session_state.get("f11_cert", ""),
-                    "常住地址": st.session_state.get("f12_address", ""),
-                    "户籍地址": st.session_state.get("f13_hometown", ""),
-                    "家庭基本情况": st.session_state.get("f14_family_type", ""),
-                    "家庭成员": family_members_str,
-                    "家庭教育方法": ",".join(st.session_state.get("f16_edu_methods", [])) if st.session_state.get("f16_edu_methods") else "",
-                    "兄弟姐妹信息": st.session_state.get("f17_sibling", "") if has_siblings else "无兄弟姐妹",
-                    "是否留守": st.session_state.get("f18_leave", ""),
-                    "父母工作情况": st.session_state.get("f19_parent_work", "") if (leave_behind == "是" and has_father_or_mother) else "",
-                    "爸爸姓名": st.session_state.get("f20_dad_name", "") if "爸爸" in family_members else "",
-                    "爸爸身份证号": st.session_state.get("f21_dad_id", "") if "爸爸" in family_members else "",
-                    "爸爸联系电话": st.session_state.get("f22_dad_phone", "") if "爸爸" in family_members else "",
-                    "妈妈姓名": st.session_state.get("f23_mom_name", "") if "妈妈" in family_members else "",
-                    "妈妈身份证号": st.session_state.get("f24_mom_id", "") if "妈妈" in family_members else "",
-                    "妈妈联系电话": st.session_state.get("f25_mom_phone", "") if "妈妈" in family_members else "",
-                    "其他监护人姓名": st.session_state.get("f26_other_name", "") if has_other else "",
-                    "其他监护人和本人关系": st.session_state.get("f27_other_relation", "") if has_other else "",
-                    "其他监护人身份证号": st.session_state.get("f28_other_id", "") if has_other else "",
-                    "其他监护人联系电话": st.session_state.get("f29_other_phone", "") if has_other else "",
-                    "选择专业原因": st.session_state.get("f30_reason", ""),
-                    "未来打算": st.session_state.get("f31_future", ""),
-                    "曾任职务": st.session_state.get("f32_position", ""),
-                    "曾患疾病": ",".join(st.session_state.get("f33_past_diseases", [])) if st.session_state.get("f33_past_diseases") else "",
-                    "现患疾病": ",".join(st.session_state.get("f34_now_diseases", [])) if st.session_state.get("f34_now_diseases") else "",
-                    "最后更新时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-                
-                if not existing.empty:
-                    idx = df_info[df_info["姓名"] == student_name].index[0]
-                    for key, value in data.items():
-                        if key in df_info.columns:
-                            df_info.at[idx, key] = str(value)
+                # 如果身份证验证不通过，阻止保存
+                if id_card_input and not id_card_valid:
+                    st.error("❌ 身份证号码验证未通过，请修正后再保存")
+                elif phone_input and not phone_valid:
+                    st.error("❌ 手机号码验证未通过，请修正后再保存")
                 else:
-                    new_row = pd.DataFrame([data])
-                    df_info = pd.concat([df_info, new_row], ignore_index=True)
-                
-                save_data_csv(df_info, "student_info_new")
-                st.success("✅ 所有信息已保存成功！")
-                st.rerun()
+                    # 收集所有数据
+                    data = {
+                        "姓名": student_name,
+                        "性别": st.session_state.get("f2_gender", ""),
+                        "民族": st.session_state.get("f3_nation", ""),
+                        "特长爱好": st.session_state.get("f4_hobby", ""),
+                        "性格特点": st.session_state.get("f5_personality", ""),
+                        "身份证号": st.session_state.get("f6_idcard", ""),
+                        "年龄": st.session_state.get("f7_age", ""),
+                        "手机号": st.session_state.get("f8_phone", ""),
+                        "初中毕业学校": st.session_state.get("f9_middle", ""),
+                        "中考总分": st.session_state.get("f10_exam", ""),
+                        "有无初中毕业证": st.session_state.get("f11_cert", ""),
+                        "常住地址": st.session_state.get("f12_address", ""),
+                        "户籍地址": st.session_state.get("f13_hometown", ""),
+                        "家庭基本情况": st.session_state.get("f14_family_type", ""),
+                        "家庭成员": family_members_str,
+                        "家庭教育方法": ",".join(st.session_state.get("f16_edu_methods", [])) if st.session_state.get("f16_edu_methods") else "",
+                        "兄弟姐妹信息": st.session_state.get("f17_sibling", "") if has_siblings else "无兄弟姐妹",
+                        "是否留守": st.session_state.get("f18_leave", ""),
+                        "父母工作情况": st.session_state.get("f19_parent_work", "") if (leave_behind == "是" and has_father_or_mother) else "",
+                        "爸爸姓名": st.session_state.get("f20_dad_name", "") if "爸爸" in family_members else "",
+                        "爸爸身份证号": st.session_state.get("f21_dad_id", "") if "爸爸" in family_members else "",
+                        "爸爸联系电话": st.session_state.get("f22_dad_phone", "") if "爸爸" in family_members else "",
+                        "妈妈姓名": st.session_state.get("f23_mom_name", "") if "妈妈" in family_members else "",
+                        "妈妈身份证号": st.session_state.get("f24_mom_id", "") if "妈妈" in family_members else "",
+                        "妈妈联系电话": st.session_state.get("f25_mom_phone", "") if "妈妈" in family_members else "",
+                        "其他监护人姓名": st.session_state.get("f26_other_name", "") if has_other else "",
+                        "其他监护人和本人关系": st.session_state.get("f27_other_relation", "") if has_other else "",
+                        "其他监护人身份证号": st.session_state.get("f28_other_id", "") if has_other else "",
+                        "其他监护人联系电话": st.session_state.get("f29_other_phone", "") if has_other else "",
+                        "选择专业原因": st.session_state.get("f30_reason", ""),
+                        "未来打算": st.session_state.get("f31_future", ""),
+                        "曾任职务": st.session_state.get("f32_position", ""),
+                        "曾患疾病": ",".join(st.session_state.get("f33_past_diseases", [])) if st.session_state.get("f33_past_diseases") else "",
+                        "现患疾病": ",".join(st.session_state.get("f34_now_diseases", [])) if st.session_state.get("f34_now_diseases") else "",
+                        "最后更新时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    
+                    if not existing.empty:
+                        idx = df_info[df_info["姓名"] == student_name].index[0]
+                        for key, value in data.items():
+                            if key in df_info.columns:
+                                df_info.at[idx, key] = str(value)
+                    else:
+                        new_row = pd.DataFrame([data])
+                        df_info = pd.concat([df_info, new_row], ignore_index=True)
+                    
+                    save_data_csv(df_info, "student_info_new")
+                    st.success("✅ 所有信息已保存成功！")
+                    st.rerun()
         
         if not existing.empty:
             st.info("📌 已保存的基本信息可以在此修改，修改后点击保存即可更新。")
