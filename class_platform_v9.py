@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
@@ -14,7 +13,7 @@ TEACHER_PASSWORD = "123456"
 DATA_FOLDER = "class_data"
 STUDENT_LIST_FILE = "student_list.xlsx"
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-USE_AI = True
+USE_AI = False  # 暂时关闭AI功能
 
 if not os.path.exists(DATA_FOLDER):
     os.makedirs(DATA_FOLDER)
@@ -121,167 +120,18 @@ def get_score_periods():
 def get_award_levels():
     return ["班级", "校级", "区级", "市级", "省级", "国家级", "国际级"]
 
-# ---------- AI 分析函数 ----------
+# ---------- AI 分析函数（暂时关闭，保留但不会被调用） ----------
 def call_deepseek_api(prompt, context):
-    if not USE_AI or not DEEPSEEK_API_KEY:
-        return "【AI未启用】请配置 DeepSeek API Key"
-    try:
-        from openai import OpenAI
-        client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "你是一位经验丰富的班主任，擅长分析学生数据，给出温暖、专业、可操作的建议。请用中文回复。"},
-                {"role": "user", "content": f"{prompt}\n\n学生数据：\n{context}"}
-            ],
-            temperature=0.7,
-            max_tokens=1500
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"AI分析调用失败：{str(e)}"
+    return "【AI功能已关闭】系统管理员已暂时关闭智能评价系统。"
 
 def get_student_full_data(student_name, student_id):
-    df_info = load_data_csv("student_info_new")
-    df_awards = load_data_csv("student_awards")
-    df_activities = load_data_csv("student_activities")
-    df_tasks = load_data_csv("student_tasks")
-    df_feedback = load_data_csv("daily_feedback")
-    df_leaves = load_data_csv("leaves")
-    df_scores = load_data_csv("score_records")
-    
-    student_info = df_info[df_info["姓名"] == student_name] if not df_info.empty else pd.DataFrame()
-    student_awards = df_awards[df_awards["姓名"] == student_name] if not df_awards.empty else pd.DataFrame()
-    student_activities = df_activities[df_activities["姓名"] == student_name] if not df_activities.empty else pd.DataFrame()
-    student_tasks = df_tasks[df_tasks["姓名"] == student_name] if not df_tasks.empty else pd.DataFrame()
-    student_feedback = df_feedback[df_feedback["姓名"] == student_name] if not df_feedback.empty else pd.DataFrame()
-    student_leaves = df_leaves[df_leaves["姓名"] == student_name] if not df_leaves.empty else pd.DataFrame()
-    
-    if not df_scores.empty:
-        student_scores = df_scores[df_scores["当事人"].str.contains(student_name, na=False)]
-    else:
-        student_scores = pd.DataFrame()
-
-    total_score = 0
-    if not student_scores.empty:
-        for _, row in student_scores.iterrows():
-            add = float(row.get("加分", "0")) if row.get("加分", "0").replace('.', '').isdigit() else 0
-            sub = float(row.get("扣分", "0")) if row.get("扣分", "0").replace('.', '').isdigit() else 0
-            total_score += add - sub
-
-    info_summary = ""
-    if not student_info.empty:
-        info = student_info.iloc[0]
-        info_summary = f"""
-【基本信息】
-- 姓名：{info.get('姓名', '未填')}
-- 性别：{info.get('性别', '未填')}
-- 民族：{info.get('民族', '未填')}
-- 特长或爱好：{info.get('特长爱好', '未填')}
-- 性格特点：{info.get('性格特点', '未填')}
-- 身份证号码：{info.get('身份证号', '未填')}
-- 年龄：{info.get('年龄', '未填')}岁
-- 手机号码：{info.get('手机号', '未填')}
-- 初中毕业学校：{info.get('初中毕业学校', '未填')}
-- 中考总分：{info.get('中考总分', '未填')}
-- 有无初中毕业证：{info.get('有无初中毕业证', '未填')}
-- 常住地址：{info.get('常住地址', '未填')}
-- 户籍地址：{info.get('户籍地址', '未填')}
-
-【家庭情况】
-- 家庭基本情况：{info.get('家庭基本情况', '未填')}
-- 家庭成员：{info.get('家庭成员', '未填')}
-- 家庭教育方法：{info.get('家庭教育方法', '未填')}
-- 兄弟姐妹信息：{info.get('兄弟姐妹信息', '无')}
-- 是否留守：{info.get('是否留守', '未填')}
-- 父母工作情况：{info.get('父母工作情况', '未填')}
-
-【监护人信息】
-- 爸爸姓名：{info.get('爸爸姓名', '无')}
-- 爸爸身份证号码：{info.get('爸爸身份证号', '无')}
-- 爸爸常用联系电话：{info.get('爸爸联系电话', '无')}
-- 妈妈姓名：{info.get('妈妈姓名', '无')}
-- 妈妈身份证号码：{info.get('妈妈身份证号', '无')}
-- 妈妈常用联系电话：{info.get('妈妈联系电话', '无')}
-- 其他监护人姓名：{info.get('其他监护人姓名', '无')}
-- 其他监护人和本人关系：{info.get('其他监护人和本人关系', '无')}
-- 其他监护人身份证号码：{info.get('其他监护人身份证号', '无')}
-- 其他监护人联系电话：{info.get('其他监护人联系电话', '无')}
-
-【个人发展】
-- 选择农村电气技术（计算机方向）专业的原因：{info.get('选择专业原因', '未填')}
-- 你对未来的打算：{info.get('未来打算', '未填')}
-- 曾在班上担任什么职务：{info.get('曾任职务', '未填')}
-- 曾经是否患过什么大病：{info.get('曾患疾病', '无')}
-- 现在是否患过什么大病：{info.get('现患疾病', '无')}
-"""
-
-    awards_summary = f"- 荣誉总数：{len(student_awards)}项\n"
-    if not student_awards.empty:
-        for _, a in student_awards.iterrows():
-            awards_summary += f"  - {a.get('奖项名称')}（{a.get('奖项级别')}）\n"
-
-    activities_summary = f"- 参加活动：{len(student_activities)}次\n"
-    
-    if not student_tasks.empty and '完成状态' in student_tasks.columns:
-        completed_count = len(student_tasks[student_tasks['完成状态'] == '已完成'])
-        tasks_summary = f"- 任务完成：{completed_count}/ {len(student_tasks)}项\n"
-    else:
-        tasks_summary = "- 任务完成：暂无任务数据\n"
-    
-    score_summary = f"""
-【量化管理】（总分：{total_score:.1f}分）
-- 加分记录：{len(student_scores[student_scores['加分'].astype(float) > 0]) if not student_scores.empty else 0}条
-- 扣分记录：{len(student_scores[student_scores['扣分'].astype(float) > 0]) if not student_scores.empty else 0}条
-"""
-    if not student_scores.empty:
-        for _, s in student_scores.iterrows():
-            add = float(s.get("加分", "0")) if s.get("加分", "0").replace('.','').isdigit() else 0
-            sub = float(s.get("扣分", "0")) if s.get("扣分", "0").replace('.','').isdigit() else 0
-            if add > 0:
-                score_summary += f"  - {s.get('时间')} +{add}分（{s.get('原由')}）\n"
-            elif sub > 0:
-                score_summary += f"  - {s.get('时间')} -{sub}分（{s.get('原由')}）\n"
-
-    return (info_summary + awards_summary + activities_summary + 
-            tasks_summary + score_summary + "请结合以上所有信息，对学生的综合情况进行评价和建议。")
+    return "【AI功能已关闭】"
 
 def analyze_student(student_name, student_id):
-    data_summary = get_student_full_data(student_name, student_id)
-    prompt = """请根据以上数据，按以下格式生成学生成长画像：
-## 📊 学生画像总览
-## 🌟 优势与闪光点
-## 📈 成长建议
-## 💡 特别关注
-## 🎯 近期目标
-## 💌 老师的鼓励
-请重点关注学生的家庭背景、心理健康状况和个人发展规划。"""
-    return call_deepseek_api(prompt, data_summary)
+    return "【AI功能已关闭】"
 
 def analyze_class_all(df_info, df_awards, df_activities, df_tasks, df_feedback, df_leaves, df_scores):
-    total_score = 0
-    if not df_scores.empty:
-        for _, row in df_scores.iterrows():
-            add = float(row.get("加分", "0")) if row.get("加分", "0").replace('.','').isdigit() else 0
-            sub = float(row.get("扣分", "0")) if row.get("扣分", "0").replace('.','').isdigit() else 0
-            total_score += add - sub
-    task_completion_rate = 0
-    if len(df_tasks) > 0 and '完成状态' in df_tasks.columns:
-        task_completion_rate = len(df_tasks[df_tasks['完成状态']=='已完成']) / len(df_tasks) * 100
-    context = f"""
-【班级概况】总人数：{len(df_info)}人
-【荣誉统计】总荣誉数：{len(df_awards)}项
-【活动参与】总人次：{len(df_activities)}次
-【任务完成】总任务数：{len(df_tasks)}项，完成率：{task_completion_rate:.1f}%
-【量化管理】班级总量化分：{total_score:.1f}分
-"""
-    prompt = """根据以上数据，按以下格式生成班级分析报告：
-## 🏫 班级整体画像
-## ✅ 班级亮点
-## ⚠️ 需要关注的问题
-## 💡 班主任工作建议
-## 🎯 本周班级目标"""
-    return call_deepseek_api(prompt, context)
+    return "【AI功能已关闭】"
 
 # ---------- 初始化数据文件 ----------
 def init_data_files():
@@ -339,12 +189,13 @@ def student_portal():
         st.rerun()
     st.divider()
     
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-        "📋 基本信息", "📊 我的量化分", "🤖 AI成长画像", "🏆 我的荣誉", 
+    # 暂时隐藏AI成长画像（Tab3），只显示7个Tab
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        "📋 基本信息", "📊 我的量化分", "🏆 我的荣誉", 
         "📋 参加活动", "✅ 我的任务", "📝 每日反馈", "📋 请假申请"
     ])
     
-     # ==================== Tab1: 学生基本信息（35项，年龄实时更新） ====================
+    # ==================== Tab1: 学生基本信息（35项，年龄实时更新） ====================
     with tab1:
         st.subheader("📋 学生基本信息档案")
         st.info("请认真填写以下信息，所有信息仅班主任可见，严格保密")
@@ -769,41 +620,8 @@ def student_portal():
         else:
             st.info("暂无量化记录，继续努力！")
     
-    # ==================== Tab3: AI成长画像 ====================
+    # ==================== Tab3: 我的荣誉 ====================
     with tab3:
-        st.subheader("🤖 AI 成长画像分析")
-        df_info = load_data_csv("student_info_new")
-        has_info = not df_info[df_info["姓名"] == student_name].empty
-        if not has_info:
-            st.warning("⚠️ 请先在「基本信息」中填写你的个人资料")
-        else:
-            df_analysis = load_data_csv("ai_analysis")
-            existing_analysis = df_analysis[df_analysis["姓名"] == student_name] if not df_analysis.empty else pd.DataFrame()
-            if st.button("🔄 重新生成分析报告", key="refresh_analysis"):
-                with st.spinner("AI 正在分析..."):
-                    analysis_result = analyze_student(student_name, student_id)
-                    if not existing_analysis.empty:
-                        idx = df_analysis[df_analysis["姓名"] == student_name].index[0]
-                        df_analysis.at[idx, "分析结果"] = analysis_result
-                        df_analysis.at[idx, "分析时间"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    else:
-                        new_row = pd.DataFrame([{
-                            "姓名": student_name, "学号": student_id,
-                            "分析时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "分析结果": analysis_result
-                        }])
-                        df_analysis = pd.concat([df_analysis, new_row], ignore_index=True)
-                    save_data_csv(df_analysis, "ai_analysis")
-                    st.success("分析完成！")
-                    st.rerun()
-            if not existing_analysis.empty:
-                st.markdown(existing_analysis["分析结果"].iloc[0])
-                st.caption(f"分析时间：{existing_analysis['分析时间'].iloc[0]}")
-            else:
-                st.info("点击按钮生成专属成长画像")
-    
-    # ==================== Tab4: 我的荣誉 ====================
-    with tab4:
         st.subheader("🏆 我的荣誉墙")
         with st.form("add_award_form"):
             col1, col2 = st.columns(2)
@@ -830,8 +648,8 @@ def student_portal():
             if not my_awards.empty:
                 st.dataframe(my_awards[["奖项名称", "奖项级别", "获奖时间", "备注"]], use_container_width=True)
     
-    # ==================== Tab5: 参加活动 ====================
-    with tab5:
+    # ==================== Tab4: 参加活动 ====================
+    with tab4:
         st.subheader("📋 可报名的活动")
         df_activities = load_data_csv("activities_published")
         df_my_activities = load_data_csv("student_activities")
@@ -866,8 +684,8 @@ def student_portal():
                 if not my_acts.empty:
                     st.dataframe(my_acts[["活动名称", "报名时间", "参与状态"]], use_container_width=True)
     
-    # ==================== Tab6: 我的任务 ====================
-    with tab6:
+    # ==================== Tab5: 我的任务 ====================
+    with tab5:
         st.subheader("✅ 我的任务")
         df_tasks = load_data_csv("student_tasks")
         my_tasks = df_tasks[df_tasks["姓名"] == student_name] if not df_tasks.empty else pd.DataFrame()
@@ -894,8 +712,8 @@ def student_portal():
         else:
             st.info("暂无任务安排")
     
-    # ==================== Tab7: 每日反馈 ====================
-    with tab7:
+    # ==================== Tab6: 每日反馈 ====================
+    with tab6:
         with st.form("daily_feedback_form"):
             mood = st.select_slider("今天心情", ["😔很差", "😐一般", "🙂不错", "😄非常好"], key="feedback_mood")
             study_status = st.selectbox("学习状态", ["很吃力", "有点吃力", "正常", "良好", "优秀"], key="feedback_study")
@@ -911,8 +729,8 @@ def student_portal():
                 save_data_csv(df, "daily_feedback")
                 st.success("反馈已提交")
     
-    # ==================== Tab8: 请假申请 ====================
-    with tab8:
+    # ==================== Tab7: 请假申请 ====================
+    with tab7:
         with st.form("leave_form_student"):
             col1, col2 = st.columns(2)
             with col1:
@@ -952,8 +770,8 @@ def teacher_portal():
     st.header("📊 教师管理平台")
     
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-        "👥 学生名单", "📋 学生信息", "📊 量化管理", "🤖 AI分析", 
-        "📋 发布活动", "🏆 学生荣誉", "📊 任务与反馈", "📋 请假审批", "📥 数据导出"
+        "👥 学生名单", "📋 学生信息", "📊 量化管理", "📋 发布活动", 
+        "🏆 学生荣誉", "📊 任务与反馈", "📋 请假审批", "📥 数据导出"
     ])
     
     with tab1:
@@ -1103,29 +921,6 @@ def teacher_portal():
             st.info("暂无记录")
     
     with tab4:
-        st.subheader("🤖 AI 综合分析")
-        df_info = load_data_csv("student_info_new")
-        if df_info.empty:
-            st.warning("请等待学生填写基本信息")
-        else:
-            if st.button("生成班级综合分析报告", key="class_ai"):
-                with st.spinner("AI分析中..."):
-                    df_awards = load_data_csv("student_awards")
-                    df_activities = load_data_csv("student_activities")
-                    df_tasks = load_data_csv("student_tasks")
-                    df_feedback = load_data_csv("daily_feedback")
-                    df_leaves = load_data_csv("leaves")
-                    df_scores = load_data_csv("score_records")
-                    result = analyze_class_all(df_info, df_awards, df_activities, df_tasks, df_feedback, df_leaves, df_scores)
-                    st.markdown(result)
-            stu = st.selectbox("选择学生查看个人画像", df_info["姓名"].tolist(), key="ai_stu")
-            if stu and st.button("生成个人画像", key="stu_ai"):
-                with st.spinner("生成中..."):
-                    sid = df_info[df_info["姓名"] == stu]["学号"].iloc[0] if not df_info.empty else ""
-                    result = analyze_student(stu, str(sid))
-                    st.markdown(result)
-    
-    with tab5:
         st.subheader("📋 发布活动")
         df = load_data_csv("activities_published")
         with st.form("pub_act"):
@@ -1145,7 +940,7 @@ def teacher_portal():
         if not df.empty:
             st.dataframe(df, use_container_width=True)
     
-    with tab6:
+    with tab5:
         st.subheader("🏆 学生荣誉")
         df = load_data_csv("student_awards")
         if not df.empty:
@@ -1157,7 +952,7 @@ def teacher_portal():
         else:
             st.info("暂无数据")
     
-    with tab7:
+    with tab6:
         st.subheader("📊 任务完成情况")
         df = load_data_csv("student_tasks")
         if not df.empty:
@@ -1176,7 +971,7 @@ def teacher_portal():
         else:
             st.info("暂无数据")
     
-    with tab8:
+    with tab7:
         st.subheader("📋 请假审批")
         df = load_data_csv("leaves")
         if not df.empty:
@@ -1197,7 +992,7 @@ def teacher_portal():
         else:
             st.info("暂无记录")
     
-    with tab9:
+    with tab8:
         st.subheader("📥 数据导出")
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
