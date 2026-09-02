@@ -13,7 +13,7 @@ TEACHER_PASSWORD = "123456"
 DATA_FOLDER = "class_data"
 STUDENT_LIST_FILE = "student_list.xlsx"
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-USE_AI = False  # 暂时关闭AI功能
+USE_AI = False
 
 if not os.path.exists(DATA_FOLDER):
     os.makedirs(DATA_FOLDER)
@@ -120,7 +120,7 @@ def get_score_periods():
 def get_award_levels():
     return ["班级", "校级", "区级", "市级", "省级", "国家级", "国际级"]
 
-# ---------- AI 分析函数（暂时关闭，保留但不会被调用） ----------
+# ---------- AI 分析函数（暂时关闭） ----------
 def call_deepseek_api(prompt, context):
     return "【AI功能已关闭】系统管理员已暂时关闭智能评价系统。"
 
@@ -189,13 +189,12 @@ def student_portal():
         st.rerun()
     st.divider()
     
-    # 暂时隐藏AI成长画像（Tab3），只显示7个Tab
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📋 基本信息", "📊 我的量化分", "🏆 我的荣誉", 
         "📋 参加活动", "✅ 我的任务", "📝 每日反馈", "📋 请假申请"
     ])
     
-    # ==================== Tab1: 学生基本信息（35项，年龄实时更新） ====================
+    # ==================== Tab1: 学生基本信息 ====================
     with tab1:
         st.subheader("📋 学生基本信息档案")
         st.info("请认真填写以下信息，所有信息仅班主任可见，严格保密")
@@ -208,7 +207,6 @@ def student_portal():
             for col in existing.columns:
                 existing_data[col] = existing.iloc[0][col] if pd.notna(existing.iloc[0][col]) else ""
         
-        # 初始化 session_state 中的值（首次加载时从 existing_data 读取）
         if f"f1_name_{student_name}" not in st.session_state:
             st.session_state[f"f1_name_{student_name}"] = student_name
         if f"f6_idcard_{student_name}" not in st.session_state:
@@ -221,31 +219,21 @@ def student_portal():
         st.markdown("---")
         st.markdown("### 📌 基本信息")
         
-        # 1. 姓名
         st.text_input("1. 姓名", value=student_name, disabled=True, key=f"f1_name_{student_name}")
         
-        # 2. 性别
         gender_idx = get_gender_options().index(existing_data.get("性别", "男")) if existing_data.get("性别") in get_gender_options() else 0
         st.selectbox("2. 性别", get_gender_options(), index=gender_idx, key=f"f2_gender_{student_name}")
         
-        # 3. 民族
         nation_idx = get_nation_options().index(existing_data.get("民族", "汉族")) if existing_data.get("民族") in get_nation_options() else 0
         st.selectbox("3. 民族", get_nation_options(), index=nation_idx, key=f"f3_nation_{student_name}")
         
-        # 4. 特长或爱好
         st.text_input("4. 特长或爱好", value=existing_data.get("特长爱好", ""), key=f"f4_hobby_{student_name}")
-        
-        # 5. 性格特点
         st.text_input("5. 性格特点", value=existing_data.get("性格特点", ""), key=f"f5_personality_{student_name}")
         
-        # 6. 身份证号码（用 on_change 回调实时更新年龄）
         st.markdown("**6. 身份证号码**")
-        
-        # 获取当前身份证值（优先从 session_state 读取最新值）
         current_id = st.session_state.get(f"f6_idcard_{student_name}", existing_data.get("身份证号", ""))
         
         def update_age():
-            """当身份证变化时，自动更新年龄"""
             id_val = st.session_state.get(f"f6_idcard_{student_name}", "")
             if id_val:
                 id_clean = id_val.strip().upper()
@@ -278,12 +266,9 @@ def student_portal():
             on_change=update_age
         )
         
-        # 身份证验证（实时显示）
-        id_card_valid = False
         if id_card_input:
             id_card_clean = id_card_input.strip().upper()
             id_len = len(id_card_clean)
-            
             if id_len < 18:
                 st.error(f"⚠️ 当前已输入 {id_len} 位，身份证号码需要18位")
             elif id_len > 18:
@@ -302,19 +287,16 @@ def student_portal():
                     if check_code[total % 11] != id_card_clean[17]:
                         st.error("❌ 身份证号码校验位错误，请核对")
                     else:
-                        id_card_valid = True
                         st.success("✅ 身份证号码验证通过")
                 except:
                     st.error("❌ 身份证号码格式错误")
         else:
             st.caption("💡 请填写18位身份证号码，填写后自动计算年龄")
         
-        # 7. 年龄（自动计算，实时更新）
         st.markdown("**7. 年龄（自动计算）**")
         age_value = st.session_state.get(f"f7_age_{student_name}", existing_data.get("年龄", ""))
         st.text_input("年龄", value=age_value, disabled=True, key=f"f7_age_{student_name}", label_visibility="collapsed")
         
-        # 8. 手机号码
         st.markdown("**8. 手机号码**")
         phone_input = st.text_input(
             "手机号码", 
@@ -340,7 +322,6 @@ def student_portal():
         else:
             st.caption("💡 请填写11位手机号码")
         
-        # 9-13 其他基本信息
         st.text_input("9. 初中毕业学校", value=existing_data.get("初中毕业学校", ""), key=f"f9_middle_{student_name}")
         st.text_input("10. 中考总分", value=existing_data.get("中考总分", ""), key=f"f10_exam_{student_name}")
         cert_idx = 0 if existing_data.get("有无初中毕业证", "有") == "有" else 1
@@ -351,11 +332,9 @@ def student_portal():
         st.markdown("---")
         st.markdown("### 👨‍👩‍👧‍👦 家庭情况")
         
-        # 14. 家庭基本情况
         family_type_idx = get_family_type_options().index(existing_data.get("家庭基本情况", "原生家庭完整")) if existing_data.get("家庭基本情况") in get_family_type_options() else 0
         st.radio("14. 家庭基本情况", get_family_type_options(), index=family_type_idx, key=f"f14_family_type_{student_name}")
         
-        # 15. 家庭成员
         default_members = existing_data.get("家庭成员", "").split(",") if existing_data.get("家庭成员") else []
         st.caption("💡 请在下拉框中选择家庭成员（可多选）")
         family_members = st.multiselect(
@@ -367,7 +346,6 @@ def student_portal():
         )
         family_members_str = ",".join(family_members) if family_members else ""
         
-        # 16. 家庭教育方法
         default_edu = existing_data.get("家庭教育方法", "").split(",") if existing_data.get("家庭教育方法") else []
         st.caption("💡 请在下拉框中选择家庭教育方法（可多选）")
         edu_methods = st.multiselect(
@@ -379,7 +357,6 @@ def student_portal():
         )
         edu_methods_str = ",".join(edu_methods) if edu_methods else ""
         
-        # 17. 兄弟姐妹信息
         sibling_types = ["哥哥", "姐姐", "弟弟", "妹妹", "其他"]
         has_siblings = any(m in family_members for m in sibling_types)
         if has_siblings:
@@ -393,11 +370,9 @@ def student_portal():
             st.text_input("17. 兄弟姐妹信息", value="无兄弟姐妹", disabled=True, key=f"f17_sibling_disabled_{student_name}")
             st.info("💡 未选择兄弟姐妹，此项不可编辑")
         
-        # 18. 是否留守
         leave_idx = 0 if existing_data.get("是否留守", "否") == "否" else 1
         leave_behind = st.radio("18. 是否留守", get_leave_behind_options(), index=leave_idx, key=f"f18_leave_{student_name}")
         
-        # 19. 父母工作情况
         has_father_or_mother = "爸爸" in family_members or "妈妈" in family_members
         if leave_behind == "是" and has_father_or_mother:
             work_idx = get_parent_work_options().index(existing_data.get("父母工作情况", "爸爸外地工作")) if existing_data.get("父母工作情况") in get_parent_work_options() else 0
@@ -412,7 +387,6 @@ def student_portal():
         st.markdown("---")
         st.markdown("### 📞 监护人信息")
         
-        # 20-22. 爸爸信息
         if "爸爸" in family_members:
             st.markdown("**👨 爸爸信息**")
             col1, col2, col3 = st.columns(3)
@@ -428,7 +402,6 @@ def student_portal():
             st.text_input("22. 爸爸常用联系电话", value="未选择爸爸", disabled=True, key=f"f22_dad_phone_dis_{student_name}")
             st.info("💡 未选择爸爸，此项不可编辑")
         
-        # 23-25. 妈妈信息
         if "妈妈" in family_members:
             st.markdown("**👩 妈妈信息**")
             col1, col2, col3 = st.columns(3)
@@ -444,7 +417,6 @@ def student_portal():
             st.text_input("25. 妈妈常用联系电话", value="未选择妈妈", disabled=True, key=f"f25_mom_phone_dis_{student_name}")
             st.info("💡 未选择妈妈，此项不可编辑")
         
-        # 26-29. 其他监护人信息
         has_other = any(m not in ["爸爸", "妈妈"] for m in family_members)
         if has_other:
             st.markdown("**👤 其他监护人信息**")
@@ -467,19 +439,15 @@ def student_portal():
         st.markdown("---")
         st.markdown("### 🎯 个人发展")
         
-        # 30. 选择专业原因
         st.text_area("30. 选择农村电气技术（计算机方向）专业的原因", 
                      value=existing_data.get("选择专业原因", ""), 
                      key=f"f30_reason_{student_name}", height=68)
         
-        # 31. 未来打算
         future_idx = get_future_plan_options().index(existing_data.get("未来打算", "升学")) if existing_data.get("未来打算") in get_future_plan_options() else 0
         st.radio("31. 你对未来的打算", get_future_plan_options(), index=future_idx, key=f"f31_future_{student_name}")
         
-        # 32. 曾任职务
         st.text_input("32. 曾在班上担任什么职务", value=existing_data.get("曾任职务", ""), key=f"f32_position_{student_name}")
         
-        # 33. 曾患疾病（添加备注）
         default_past = existing_data.get("曾患疾病", "").split(",") if existing_data.get("曾患疾病") else []
         st.caption("💡 请在下拉框中选择曾患疾病（可多选）")
         st.markdown("**⚠️ 重要提醒：如有隐瞒，后果自负！**")
@@ -492,7 +460,6 @@ def student_portal():
         )
         past_diseases_str = ",".join(past_diseases) if past_diseases else ""
         
-        # 34. 现患疾病（添加备注）
         default_now = existing_data.get("现患疾病", "").split(",") if existing_data.get("现患疾病") else []
         st.caption("💡 请在下拉框中选择现患疾病（可多选）")
         st.markdown("**⚠️ 重要提醒：如有隐瞒，后果自负！**")
@@ -507,9 +474,7 @@ def student_portal():
         
         st.markdown("---")
         
-        # ===== 保存按钮 =====
         if st.button("💾 保存全部信息", key=f"save_all_{student_name}"):
-            # 验证身份证
             id_valid = False
             if id_card_input:
                 id_clean = id_card_input.strip().upper()
@@ -536,7 +501,6 @@ def student_portal():
             elif phone_input and not phone_valid:
                 st.error("❌ 手机号码验证未通过，请修正后再保存")
             else:
-                # 收集所有数据
                 data = {
                     "姓名": student_name,
                     "性别": st.session_state.get(f"f2_gender_{student_name}", ""),
@@ -769,7 +733,7 @@ def teacher_login():
 def teacher_portal():
     st.header("📊 教师管理平台")
     
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "👥 学生名单", "📋 学生信息", "📊 量化管理", "📋 发布活动", 
         "🏆 学生荣誉", "📊 任务与反馈", "📋 请假审批", "📥 数据导出"
     ])
