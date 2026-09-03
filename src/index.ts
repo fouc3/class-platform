@@ -3,7 +3,7 @@
 // 存储：env.DB（D1）→ D1Store；会话：env.sessions 或内存实现。
 import { handleRequest } from "./api/router.ts";
 import type { Env } from "./api/router.ts";
-import { MemorySessionStore } from "./api/session.ts";
+import { HmacSessionStore, type SessionStore } from "./api/session.ts";
 import { D1Store, type D1Database } from "./storage/d1-store.ts";
 import type { Store } from "./storage/types.ts";
 import { DATA_TABLES, TABLE_STUDENT_LIST } from "./storage/types.ts";
@@ -13,16 +13,16 @@ export interface WorkerEnv {
   DB?: D1Database;
   /** 可选：外部注入的存储实现（测试/替代存储时用） */
   store?: Store;
-  /** 可选：外部注入的会话实现（默认内存） */
-  sessions?: import("./api/session.ts").SessionStore;
+  /** 可选：外部注入的会话实现（默认 HMAC 签名会话） */
+  sessions?: SessionStore;
   /** 教师密码（wrangler secret / [vars] 注入） */
   TEACHER_PASSWORD?: string;
+  /** 会话签名密钥（wrangler secret / [vars] 注入，生产务必用 secret） */
+  TOKEN_SECRET?: string;
 }
 
 // 模块级懒初始化：每 isolate 只建一次表、一次会话实例。
-// 注意：内存会话仅适合本地/单 isolate 场景；生产多 isolate 建议改用 KV-backed 会话（通过 env.sessions 注入）。
 let storePromise: Promise<Store> | null = null;
-const defaultSessions = new MemorySessionStore();
 
 function getStore(env: WorkerEnv): Promise<Store> {
   if (env.store) return Promise.resolve(env.store);
@@ -52,7 +52,8 @@ export default {
     }
     const fullEnv: Env = {
       store,
-      sessions: env.sessions ?? defaultSessions,
+      // 无状态 HMAC 签名 token：多 isolate 部署下 token 跨 isolate 有效
+      sessions: env.sessions ?? new HmacSessionStore(env.TOKEN_SECRET ?? ""),
       TEACHER_PASSWORD: env.TEACHER_PASSWORD,
     };
     return handleRequest(request, fullEnv);

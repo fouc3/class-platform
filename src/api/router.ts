@@ -222,14 +222,14 @@ async function handleTeacherLogin(req: Request, env: Env): Promise<Response> {
   const body = (await parseBody(req)) as Record<string, unknown> | null;
   const pwd = typeof body?.password === "string" ? body.password : "";
   const expected = env.TEACHER_PASSWORD ?? DEFAULT_TEACHER_PASSWORD;
-  const token = env.sessions.create(pwd, expected);
+  const token = await env.sessions.create(pwd, expected);
   if (!token) return json({ ok: false }, 401);
   return json({ ok: true, token });
 }
 
-function requireTeacher(req: Request, env: Env): Response | null {
+async function requireTeacher(req: Request, env: Env): Promise<Response | null> {
   const token = getTeacherToken(req);
-  if (!token || !env.sessions.verify(token)) {
+  if (!token || !(await env.sessions.verify(token))) {
     return json({ ok: false, error: "未授权" }, 401);
   }
   return null;
@@ -421,7 +421,7 @@ export async function handleRequest(req: Request, env: Env): Promise<Response> {
   // ---- 教师端 ----
   if (path === "/api/teacher/login" && req.method === "POST") return handleTeacherLogin(req, env);
   // 以下接口需要教师 token
-  const authErr = requireTeacher(req, env);
+  const authErr = await requireTeacher(req, env);
   if (authErr) return authErr;
 
   if (path === "/api/teacher/students" && req.method === "GET") return handleTeacherStudents(req, env.store);
