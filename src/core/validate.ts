@@ -91,3 +91,71 @@ export function validatePhone(raw: string | undefined | null): { valid: boolean;
   }
   return { valid: false, message: "❌ 手机号码格式错误，请以1或9开头" };
 }
+
+// ========== 通用字段校验（后端合法性验证） ==========
+// 所有表单提交的字段都在这里统一校验，返回错误文案或 null（通过）。
+
+export interface FieldCheckOpts {
+  /** 必填（去掉首尾空格后非空） */
+  required?: boolean;
+  /** 最大长度（含多字节，按字符数） */
+  maxLen?: number;
+  /** 必须是指定枚举之一 */
+  options?: readonly string[];
+  /** 逗号分隔的多选值，每一项都必须属于 subsetOf */
+  subsetOf?: readonly string[];
+  /** 必须是 YYYY-MM-DD 日期 */
+  date?: boolean;
+  /** 必须是纯数字 */
+  digits?: boolean;
+  /** 必须是数字（可小数），可配合 min/max */
+  number?: boolean;
+  min?: number;
+  max?: number;
+  /** 禁止 CSV 注入前缀（= + - @ 开头） */
+  noCsvInject?: boolean;
+}
+
+const CSV_INJECT_RE = /^[=+\-@\t\r]/;
+
+export function checkField(label: string, value: string | undefined | null, opts: FieldCheckOpts = {}): string | null {
+  const v = String(value ?? "");
+  if (opts.required && !v.trim()) return `请填写${label}`;
+  const has = v.trim().length > 0;
+  if (has && opts.maxLen !== undefined && v.length > opts.maxLen) {
+    return `${label}不能超过 ${opts.maxLen} 字`;
+  }
+  if (has && opts.options && !opts.options.includes(v)) {
+    return `${label}取值不合法`;
+  }
+  if (has && opts.subsetOf) {
+    const parts = v.split(",").map((s) => s.trim()).filter(Boolean);
+    for (const p of parts) {
+      if (!opts.subsetOf.includes(p)) return `${label}包含不合法项：${p}`;
+    }
+  }
+  if (has && opts.date && !/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    return `${label}格式不正确（应为 YYYY-MM-DD）`;
+  }
+  if (has && opts.digits && !/^\d+$/.test(v)) {
+    return `${label}必须为数字`;
+  }
+  if (has && opts.number) {
+    const n = Number(v);
+    if (isNaN(n)) return `${label}必须为数字`;
+    if (opts.min !== undefined && n < opts.min) return `${label}不能小于 ${opts.min}`;
+    if (opts.max !== undefined && n > opts.max) return `${label}不能大于 ${opts.max}`;
+  }
+  if (has && opts.noCsvInject && CSV_INJECT_RE.test(v)) {
+    return `${label}不能以 =、+、-、@ 等字符开头`;
+  }
+  return null;
+}
+
+/** 对任意未知键做长度兜底校验（防止超长字段） */
+export function checkTableRow(row: Record<string, string>, maxLen = 2000): string | null {
+  for (const [k, v] of Object.entries(row)) {
+    if (v.length > maxLen) return `${k}长度不能超过 ${maxLen} 字`;
+  }
+  return null;
+}

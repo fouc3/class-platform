@@ -39,8 +39,17 @@ import {
   approveLeave,
   getAllTableContents,
 } from "../core/teacher.ts";
-import { validateIdCard, validatePhone } from "../core/validate.ts";
-import { todayStr, dateTimeStr } from "../config.ts";
+import { validateIdCard, validatePhone, checkField, checkTableRow } from "../core/validate.ts";
+import {
+  todayStr, dateTimeStr,
+  GENDER_OPTIONS, NATION_OPTIONS, FAMILY_TYPE_OPTIONS, FAMILY_MEMBER_OPTIONS,
+  EDUCATION_METHOD_OPTIONS, LEAVE_BEHIND_OPTIONS, PARENT_WORK_OPTIONS,
+  FUTURE_PLAN_OPTIONS, DISEASE_OPTIONS,
+  SCORE_SOURCE_OPTIONS, SCORE_DIRECTION_OPTIONS, SCORE_PERIOD_OPTIONS,
+  AWARD_LEVEL_OPTIONS, LEAVE_APPROVE_OPTIONS,
+  TASK_STATUS_OPTIONS,
+  FEEDBACK_MOOD_OPTIONS, FEEDBACK_STUDY_OPTIONS,
+} from "../config.ts";
 
 export interface Env {
   store: Store;
@@ -102,6 +111,8 @@ async function handleStudentLogin(req: Request, env: Env): Promise<Response> {
   if (!body || typeof body["name"] !== "string") return error("请输入姓名");
   const name = (body["name"] as string).trim();
   if (!name) return json({ valid: false, sid: null, error: "请输入姓名" });
+  const nameC = checkField("姓名", name, { maxLen: 50 });
+  if (nameC) return json({ valid: false, sid: null, error: nameC });
   const mode = resolveRegMode(env);
   // closed 模式：名单内已有学生可登录，禁止新增
   const result = await verifyStudent(env.store, name);
@@ -134,7 +145,60 @@ async function handleStudentInfoSave(req: Request, store: Store): Promise<Respon
   for (const [k, v] of Object.entries(body)) {
     data[k] = String(v ?? "");
   }
-  // 校验身份证（与 v9 保存门一致）
+  // 姓名必填 + 长度
+  const nameCheck = checkField("姓名", data["姓名"], { required: true, maxLen: 50 });
+  if (nameCheck) return error(nameCheck);
+  // 单选枚举校验（与前端选项一致）
+  const genderCheck = checkField("性别", data["性别"], { options: GENDER_OPTIONS as readonly string[] });
+  if (genderCheck) return error(genderCheck);
+  const nationCheck = checkField("民族", data["民族"], { options: NATION_OPTIONS as readonly string[] });
+  if (nationCheck) return error(nationCheck);
+  const certCheck = checkField("有无初中毕业证", data["有无初中毕业证"], { options: ["有", "无"] });
+  if (certCheck) return error(certCheck);
+  const familyCheck = checkField("家庭基本情况", data["家庭基本情况"], { options: FAMILY_TYPE_OPTIONS as readonly string[] });
+  if (familyCheck) return error(familyCheck);
+  const familyMembersCheck = checkField("家庭成员", data["家庭成员"], { subsetOf: FAMILY_MEMBER_OPTIONS as readonly string[] });
+  if (familyMembersCheck) return error(familyMembersCheck);
+  const eduCheck = checkField("家庭教育方法", data["家庭教育方法"], { subsetOf: EDUCATION_METHOD_OPTIONS as readonly string[] });
+  if (eduCheck) return error(eduCheck);
+  const leaveCheck = checkField("是否留守", data["是否留守"], { options: LEAVE_BEHIND_OPTIONS as readonly string[] });
+  if (leaveCheck) return error(leaveCheck);
+  const parentWorkCheck = checkField("父母工作情况", data["父母工作情况"], { options: PARENT_WORK_OPTIONS as readonly string[] });
+  if (parentWorkCheck) return error(parentWorkCheck);
+  const futureCheck = checkField("未来打算", data["未来打算"], { options: FUTURE_PLAN_OPTIONS as readonly string[] });
+  if (futureCheck) return error(futureCheck);
+  const pastDiseaseCheck = checkField("曾患疾病", data["曾患疾病"], { subsetOf: DISEASE_OPTIONS as readonly string[] });
+  if (pastDiseaseCheck) return error(pastDiseaseCheck);
+  const nowDiseaseCheck = checkField("现患疾病", data["现患疾病"], { subsetOf: DISEASE_OPTIONS as readonly string[] });
+  if (nowDiseaseCheck) return error(nowDiseaseCheck);
+  // 文本字段长度校验 + CSV 注入拦截
+  const textFields: [string, string, number][] = [
+    ["特长爱好", "特长爱好", 200],
+    ["性格特点", "性格特点", 200],
+    ["年龄", "年龄", 3],
+    ["初中毕业学校", "初中毕业学校", 100],
+    ["中考总分", "中考总分", 10],
+    ["常住地址", "常住地址", 200],
+    ["户籍地址", "户籍地址", 200],
+    ["兄弟姐妹信息", "兄弟姐妹信息", 200],
+    ["爸爸姓名", "爸爸姓名", 50],
+    ["爸爸身份证号", "爸爸身份证号", 20],
+    ["爸爸联系电话", "爸爸联系电话", 20],
+    ["妈妈姓名", "妈妈姓名", 50],
+    ["妈妈身份证号", "妈妈身份证号", 20],
+    ["妈妈联系电话", "妈妈联系电话", 20],
+    ["其他监护人姓名", "其他监护人姓名", 50],
+    ["其他监护人和本人关系", "其他监护人和本人关系", 50],
+    ["其他监护人身份证号", "其他监护人身份证号", 20],
+    ["其他监护人联系电话", "其他监护人联系电话", 20],
+    ["选择专业原因", "选择专业原因", 500],
+    ["曾任职务", "曾任职务", 100],
+  ];
+  for (const [label, key, max] of textFields) {
+    const c = checkField(label, data[key], { maxLen: max, noCsvInject: true });
+    if (c) return error(c);
+  }
+  // 身份证/手机号格式（与 v9 保存门一致）
   const idCard = data["身份证号"] ?? "";
   if (idCard) {
     const idRes = validateIdCard(idCard);
@@ -159,7 +223,15 @@ async function handleStudentScores(req: Request, store: Store): Promise<Response
 
 async function handleStudentAward(req: Request, store: Store): Promise<Response> {
   const body = (await parseBody(req)) as Record<string, string> | null;
-  if (!body || !body["姓名"] || !body["奖项名称"]) return error("缺少必要字段");
+  if (!body || !body["姓名"]) return error("缺少必要字段");
+  const c1 = checkField("奖项名称", body["奖项名称"], { required: true, maxLen: 100, noCsvInject: true });
+  if (c1) return error(c1);
+  const c2 = checkField("奖项级别", body["奖项级别"], { options: AWARD_LEVEL_OPTIONS as readonly string[] });
+  if (c2) return error(c2);
+  const c3 = checkField("获奖时间", body["获奖时间"], { date: true });
+  if (c3) return error(c3);
+  const c4 = checkField("备注", body["备注"], { maxLen: 500, noCsvInject: true });
+  if (c4) return error(c4);
   await addAward(store, {
     姓名: body["姓名"],
     学号: body["学号"] ?? "",
@@ -187,7 +259,9 @@ async function handleStudentActivities(req: Request, store: Store): Promise<Resp
 
 async function handleStudentActivityJoin(req: Request, store: Store): Promise<Response> {
   const body = (await parseBody(req)) as Record<string, string> | null;
-  if (!body || !body["姓名"] || !body["活动名称"]) return error("缺少必要字段");
+  if (!body || !body["姓名"]) return error("缺少必要字段");
+  const c = checkField("活动名称", body["活动名称"], { required: true, maxLen: 100, noCsvInject: true });
+  if (c) return error(c);
   await joinActivity(store, {
     姓名: body["姓名"],
     学号: body["学号"] ?? "",
@@ -208,6 +282,8 @@ async function handleStudentTaskUpdate(req: Request, store: Store): Promise<Resp
   if (!body || typeof body["index"] !== "number" || typeof body["status"] !== "string") {
     return error("缺少 index 或 status");
   }
+  const c = checkField("完成状态", body["status"] as string, { options: TASK_STATUS_OPTIONS as readonly string[] });
+  if (c) return error(c);
   const ok = await updateTaskStatus(store, body["index"] as number, body["status"] as string);
   return ok ? json({ ok: true }) : error("下标越界");
 }
@@ -215,6 +291,12 @@ async function handleStudentTaskUpdate(req: Request, store: Store): Promise<Resp
 async function handleStudentFeedback(req: Request, store: Store): Promise<Response> {
   const body = (await parseBody(req)) as Record<string, string> | null;
   if (!body || !body["姓名"]) return error("缺少姓名");
+  const c1 = checkField("心情", body["心情"], { options: FEEDBACK_MOOD_OPTIONS as readonly string[] });
+  if (c1) return error(c1);
+  const c2 = checkField("学习状态", body["学习状态"], { options: FEEDBACK_STUDY_OPTIONS as readonly string[] });
+  if (c2) return error(c2);
+  const c3 = checkField("反馈内容", body["反馈内容"], { maxLen: 2000, noCsvInject: true });
+  if (c3) return error(c3);
   await addFeedback(store, {
     姓名: body["姓名"],
     学号: body["学号"] ?? "",
@@ -228,6 +310,10 @@ async function handleStudentFeedback(req: Request, store: Store): Promise<Respon
 async function handleStudentLeave(req: Request, store: Store): Promise<Response> {
   const body = (await parseBody(req)) as Record<string, unknown> | null;
   if (!body || !body["姓名"] || !body["请假日期"]) return error("缺少必要字段");
+  const c1 = checkField("请假日期", String(body["请假日期"] ?? ""), { date: true });
+  if (c1) return error(c1);
+  const c2 = checkField("请假事由", String(body["事由"] ?? ""), { maxLen: 1000, noCsvInject: true });
+  if (c2) return error(c2);
   await addLeave(store, {
     姓名: body["姓名"] as string,
     学号: body["学号"] as string ?? "",
@@ -288,6 +374,17 @@ async function handleTeacherStudentsUpload(req: Request, store: Store): Promise<
       }
       return row;
     });
+    // 行级合法性校验（防止超长 / 空名单 / 注入字段）
+    if (rows.length === 0) return error("名单为空");
+    if (rows.length > 5000) return error("名单超过 5000 行上限");
+    for (const r of rows) {
+      const c = checkTableRow(r, 200);
+      if (c) return error(c);
+      const n = checkField("姓名", r["姓名"], { required: true, maxLen: 50 });
+      if (n) return error(n);
+      const s = checkField("学号", r["学号"], { maxLen: 50 });
+      if (s) return error(s);
+    }
     await setStudentList(store, rows);
     return json({ ok: true, count: rows.length });
   } catch (e) {
@@ -298,7 +395,11 @@ async function handleTeacherStudentsUpload(req: Request, store: Store): Promise<
 async function handleTeacherStudentsAdd(req: Request, store: Store): Promise<Response> {
   const body = (await parseBody(req)) as Record<string, string> | null;
   if (!body || !body["name"] || !body["sid"]) return error("缺少 name 或 sid");
-  await addStudent(store, body["name"], body["sid"]);
+  const c1 = checkField("姓名", body["name"], { required: true, maxLen: 50 });
+  if (c1) return error(c1);
+  const c2 = checkField("学号", body["sid"], { required: true, maxLen: 50 });
+  if (c2) return error(c2);
+  await addStudent(store, body["name"].trim(), body["sid"].trim());
   return json({ ok: true });
 }
 
@@ -342,9 +443,28 @@ async function handleTeacherScoreAdd(req: Request, store: Store): Promise<Respon
   const addScore = Number(body["add"] ?? 0);
   const subScore = Number(body["sub"] ?? 0);
   const reason = String(body["reason"] ?? "").trim();
+  // 字段合法性
+  const c1 = checkField("信息来源", String(body["source"] ?? ""), { options: SCORE_SOURCE_OPTIONS as readonly string[] });
+  if (c1) return error(c1);
+  const c2 = checkField("加扣分方向", String(body["direction"] ?? ""), { options: SCORE_DIRECTION_OPTIONS as readonly string[] });
+  if (c2) return error(c2);
+  const c3 = checkField("上报周期", String(body["period"] ?? ""), { options: SCORE_PERIOD_OPTIONS as readonly string[] });
+  if (c3) return error(c3);
+  const c4 = checkField("时间", String(body["date"] ?? ""), { date: true });
+  if (c4) return error(c4);
+  const c5 = checkField("加分", String(body["add"] ?? ""), { number: true, min: 0, max: 100 });
+  if (c5) return error(c5);
+  const c6 = checkField("扣分", String(body["sub"] ?? ""), { number: true, min: 0, max: 100 });
+  if (c6) return error(c6);
+  const c7 = checkField("原由", reason, { required: true, maxLen: 1000, noCsvInject: true });
+  if (c7) return error(c7);
   if (!students || (addScore <= 0 && subScore <= 0) || !reason) {
     return error("请填写完整信息（当事人、分数、原由）");
   }
+  const c8 = checkField("当事人", students, { maxLen: 2000, noCsvInject: true });
+  if (c8) return error(c8);
+  const c9 = checkField("证明材料", String(body["proof"] ?? ""), { maxLen: 500, noCsvInject: true });
+  if (c9) return error(c9);
   await addScoreRecord(store, {
     信息来源: String(body["source"] ?? ""),
     加扣分方向: String(body["direction"] ?? ""),
@@ -367,8 +487,16 @@ async function handleTeacherActivities(req: Request, store: Store): Promise<Resp
 async function handleTeacherActivityPublish(req: Request, store: Store): Promise<Response> {
   const body = (await parseBody(req)) as Record<string, string> | null;
   if (!body || !body["name"]) return error("缺少活动名称");
+  const c1 = checkField("活动名称", body["name"], { required: true, maxLen: 100, noCsvInject: true });
+  if (c1) return error(c1);
+  const c2 = checkField("活动描述", body["desc"], { maxLen: 2000, noCsvInject: true });
+  if (c2) return error(c2);
+  const c3 = checkField("截止时间", body["deadline"], { date: true });
+  if (c3) return error(c3);
+  const c4 = checkField("状态", body["status"], { options: ["进行中", "已结束"] });
+  if (c4) return error(c4);
   await publishActivity(store, {
-    活动名称: body["name"],
+    活动名称: body["name"].trim(),
     活动描述: body["desc"] ?? "",
     截止时间: body["deadline"] ?? todayStr(),
     状态: body["status"] ?? "进行中",
@@ -401,6 +529,10 @@ async function handleTeacherLeaves(req: Request, store: Store): Promise<Response
 async function handleTeacherLeaveApprove(req: Request, store: Store): Promise<Response> {
   const body = (await parseBody(req)) as Record<string, unknown> | null;
   if (!body || typeof body["index"] !== "number") return error("缺少 index");
+  const c1 = checkField("审批状态", String(body["status"] ?? ""), { options: LEAVE_APPROVE_OPTIONS as readonly string[] });
+  if (c1) return error(c1);
+  const c2 = checkField("班主任意见", String(body["comment"] ?? ""), { maxLen: 500, noCsvInject: true });
+  if (c2) return error(c2);
   const ok = await approveLeave(
     store,
     body["index"] as number,

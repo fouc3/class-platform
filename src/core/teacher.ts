@@ -78,10 +78,12 @@ export function csvFromRows(rows: Row[], columns: string[]): string {
 }
 
 function escapeCsvField(val: string): string {
-  if (val.includes(",") || val.includes('"') || val.includes("\n")) {
-    return `"${val.replace(/"/g, '""')}"`;
+  // CSV 注入防护：以 = + - @ 制表符、回车开头的字段加单引号前缀
+  const safeVal = /^[=+\-@\t\r]/.test(val) ? `'${val}` : val;
+  if (safeVal.includes(",") || safeVal.includes('"') || safeVal.includes("\n")) {
+    return `"${safeVal.replace(/"/g, '""')}"`;
   }
-  return val;
+  return safeVal;
 }
 
 // ========== 量化管理 ==========
