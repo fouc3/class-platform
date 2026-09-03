@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>班级学生成长平台</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- 侧边栏导航 -->
+    <aside class="sidebar">
+      <h1 class="sidebar-title">班级学生成长平台</h1>
+      <nav class="nav">
+        <div class="nav-label">登录身份</div>
+        <label class="nav-radio">
+          <input type="radio" name="role" value="student" checked onchange="window.App.switchRole('student')">
+          <span>👨‍🎓 学生入口</span>
+        </label>
+        <label class="nav-radio">
+          <input type="radio" name="role" value="teacher" onchange="window.App.switchRole('teacher')">
+          <span>👩‍🏫 教师后台</span>
+        </label>
+      </nav>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main">
+      <!-- 学生端 -->
+      <section id="student-view" class="view">
+        <div id="student-login" class="panel">
+          <h2>👨‍🎓 学生成长中心</h2>
+          <p class="muted">请输入你的姓名登录</p>
+          <input id="login-name" type="text" placeholder="请输入你的姓名" autocomplete="off">
+          <button id="login-btn" class="btn primary">登录</button>
+          <div id="login-msg" class="msg"></div>
+        </div>
+        <div id="student-portal" class="panel hidden">
+          <div class="portal-header">
+            <h2>👨‍🎓 学生成长中心</h2>
+            <span id="student-welcome" class="welcome"></span>
+            <button id="student-logout" class="btn ghost">退出登录</button>
+          </div>
+          <div class="tabs" id="student-tabs">
+            <button class="tab active" data-tab="s1">📋 基本信息</button>
+            <button class="tab" data-tab="s2">📊 我的量化分</button>
+            <button class="tab" data-tab="s3">🏆 我的荣誉</button>
+            <button class="tab" data-tab="s4">📋 参加活动</button>
+            <button class="tab" data-tab="s5">✅ 我的任务</button>
+            <button class="tab" data-tab="s6">📝 每日反馈</button>
+            <button class="tab" data-tab="s7">📋 请假申请</button>
+          </div>
+          <div id="s1" class="tab-content active"></div>
+          <div id="s2" class="tab-content"></div>
+          <div id="s3" class="tab-content"></div>
+          <div id="s4" class="tab-content"></div>
+          <div id="s5" class="tab-content"></div>
+          <div id="s6" class="tab-content"></div>
+          <div id="s7" class="tab-content"></div>
+        </div>
+      </section>
+
+      <!-- 教师端 -->
+      <section id="teacher-view" class="view hidden">
+        <div id="teacher-login" class="panel">
+          <h2>🔐 教师后台</h2>
+          <input id="teacher-pwd" type="password" placeholder="管理员密码" autocomplete="off">
+          <button id="teacher-login-btn" class="btn primary">登录</button>
+          <div id="teacher-login-msg" class="msg"></div>
+        </div>
+        <div id="teacher-portal" class="panel hidden">
+          <div class="portal-header">
+            <h2>📊 教师管理平台</h2>
+            <button id="teacher-logout" class="btn ghost">退出登录</button>
+          </div>
+          <div class="tabs" id="teacher-tabs">
+            <button class="tab active" data-tab="t1">👥 学生名单</button>
+            <button class="tab" data-tab="t2">📋 学生信息</button>
+            <button class="tab" data-tab="t3">📊 量化管理</button>
+            <button class="tab" data-tab="t4">📋 发布活动</button>
+            <button class="tab" data-tab="t5">🏆 学生荣誉</button>
+            <button class="tab" data-tab="t6">📊 任务与反馈</button>
+            <button class="tab" data-tab="t7">📋 请假审批</button>
+            <button class="tab" data-tab="t8">📥 数据导出</button>
+          </div>
+          <div id="t1" class="tab-content active"></div>
+          <div id="t2" class="tab-content"></div>
+          <div id="t3" class="tab-content"></div>
+          <div id="t4" class="tab-content"></div>
+          <div id="t5" class="tab-content"></div>
+          <div id="t6" class="tab-content"></div>
+          <div id="t7" class="tab-content"></div>
+          <div id="t8" class="tab-content"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

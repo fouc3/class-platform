@@ -1,0 +1,19 @@
+# ========== Cloudflare Worker 配置 ==========
+# 部署前准备：
+#   1. env.store 需改为 KV/D1/R2 实现的 Store 接口（当前 FsStore 仅本地可用，见 src/storage/fs-store.ts）
+#   2. env.sessions 需改为 KV-backed 会话（当前 MemorySessionStore 仅单进程可用）
+#   3. 前端静态资源由 Workers Assets 托管（[assets] 配置）
+# 本地开发请使用：npm run dev（Node 模拟 CF Worker 环境，存储用 fs）
+name = "class-platform"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# 教师密码：CF Worker 标准环境变量注入（读取方式见 src/index.ts 的 env.TEACHER_PASSWORD）。
+# 生产建议用 Secret：wrangler secret put TEACHER_PASSWORD
+# 如需在 toml 中声明开发值，取消下行注释：
+# [vars]
+# TEACHER_PASSWORD = "123456"

@@ -1,0 +1,10 @@
+# 依赖与构建产物
+node_modules/
+dist/
+.npm-cache/
+
+# 运行时数据（本地 fs 存储，每张表一个 JSON）
+data/
+
+# 日志
+*.log
