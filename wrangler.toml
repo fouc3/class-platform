@@ -24,6 +24,13 @@ database_id = "513d3ad3-15c4-4406-b6f6-35ef50c216d8"
 
 # 教师密码与会话签名密钥：CF Worker 标准环境变量注入。
 # 生产建议用 Secret：wrangler secret put TEACHER_PASSWORD / TOKEN_SECRET
+#
+# 学生注册模式（ALLOW_REGISTRATION）：
+#   未设置 / whitelist → 仅白名单内可登录（默认，v9 原行为）
+#   open               → 任何名字自动加入名单后登录
+#   closed             → 禁止新增，已有名单内学生可登录
+# 如需切换，取消下行注释并改值：
 [vars]
 TEACHER_PASSWORD = "test12345667"
 TOKEN_SECRET = "class-platform-token-secret-dev"
+# ALLOW_REGISTRATION = "whitelist"

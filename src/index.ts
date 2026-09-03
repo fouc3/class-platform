@@ -19,6 +19,8 @@ export interface WorkerEnv {
   TEACHER_PASSWORD?: string;
   /** 会话签名密钥（wrangler secret / [vars] 注入，生产务必用 secret） */
   TOKEN_SECRET?: string;
+  /** 学生注册模式：open / whitelist(默认) / closed（见 router.ts Env） */
+  ALLOW_REGISTRATION?: string;
 }
 
 // 模块级懒初始化：每 isolate 只建一次表、一次会话实例。
@@ -55,6 +57,7 @@ export default {
       // 无状态 HMAC 签名 token：多 isolate 部署下 token 跨 isolate 有效
       sessions: env.sessions ?? new HmacSessionStore(env.TOKEN_SECRET ?? ""),
       TEACHER_PASSWORD: env.TEACHER_PASSWORD,
+      ALLOW_REGISTRATION: env.ALLOW_REGISTRATION,
     };
     return handleRequest(request, fullEnv);
   },

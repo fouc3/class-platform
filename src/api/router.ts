@@ -47,6 +47,13 @@ export interface Env {
   sessions: SessionStore;
   /** 教师密码，由 CF 环境注入（wrangler secret / [vars] / 本地 process.env），未配置时用默认值 */
   TEACHER_PASSWORD?: string;
+  /**
+   * 学生注册模式（控制登录时未在名单中的名字的行为）
+   * 未设置 / "whitelist" → 仅白名单内可登录（v9 原行为，第二模式）
+   * "open"             → 任何名字自动加入名单后登录（第一模式）
+   * "closed"           → 禁止新增，已有名单内学生可登录（第三模式）
+   */
+  ALLOW_REGISTRATION?: string;
 }
 
 /** 从请求中提取教师 token（或返回 null） */
@@ -80,12 +87,34 @@ async function parseBody(req: Request): Promise<unknown> {
 
 // ======== 学生端路由 ========
 
-async function handleStudentLogin(req: Request, store: Store): Promise<Response> {
+/** 学生注册模式（默认白名单） */
+type RegMode = "whitelist" | "open" | "closed";
+
+function resolveRegMode(env: Env): RegMode {
+  const raw = (env.ALLOW_REGISTRATION ?? "").trim().toLowerCase();
+  if (raw === "open" || raw === "1" || raw === "true") return "open";
+  if (raw === "closed" || raw === "0" || raw === "false") return "closed";
+  return "whitelist"; // 未设置默认白名单
+}
+
+async function handleStudentLogin(req: Request, env: Env): Promise<Response> {
   const body = (await parseBody(req)) as Record<string, unknown> | null;
   if (!body || typeof body["name"] !== "string") return error("请输入姓名");
   const name = (body["name"] as string).trim();
   if (!name) return json({ valid: false, sid: null, error: "请输入姓名" });
-  const result = await verifyStudent(store, name);
+  const mode = resolveRegMode(env);
+  // closed 模式：名单内已有学生可登录，禁止新增
+  const result = await verifyStudent(env.store, name);
+  if (result.valid || mode === "closed") {
+    return json(result);
+  }
+  // 未在名单中
+  if (mode === "open") {
+    // 开放注册：自动加入名单（学号缺省用姓名，与 v9 verify_student 的 sid 回退一致）
+    await addStudent(env.store, name, name);
+    return json({ valid: true, sid: name });
+  }
+  // whitelist 默认：仅白名单内可登录
   return json(result);
 }
 
@@ -404,7 +433,7 @@ export async function handleRequest(req: Request, env: Env): Promise<Response> {
   const path = url.pathname;
 
   // ---- 学生端 ----
-  if (path === "/api/student/login" && req.method === "POST") return handleStudentLogin(req, env.store);
+  if (path === "/api/student/login" && req.method === "POST") return handleStudentLogin(req, env);
   if (path === "/api/student/info" && req.method === "GET") return handleStudentInfo(req, env.store);
   if (path === "/api/student/info/save" && req.method === "POST") return handleStudentInfoSave(req, env.store);
   if (path === "/api/student/scores" && req.method === "GET") return handleStudentScores(req, env.store);
