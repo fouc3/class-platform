@@ -298,10 +298,10 @@ export async function approveLeave(store: Store, index: number, status: string, 
 
 // ========== 数据导出 ==========
 
-/** 获取所有数据表的内容（用于打包 zip） */
+/** 获取所有数据表的内容（用于打包 zip，包括独立管理的学生名单） */
 export async function getAllTableContents(store: Store): Promise<Record<string, Row[]>> {
   const result: Record<string, Row[]> = {};
-  for (const t of DATA_TABLES) {
+  for (const t of [TABLE_STUDENT_LIST, ...DATA_TABLES]) {
     result[t] = await store.readTable(t);
   }
   return result;

@@ -547,6 +547,15 @@ async function handleExport(req: Request, store: Store): Promise<Response> {
   const files: Record<string, Uint8Array> = {};
   for (const [name, rows] of Object.entries(contents)) {
     files[`${name}.json`] = strToU8(JSON.stringify(rows, null, 2));
+
+    // 固定结构表使用定义的列顺序；学生名单支持迁移自 XLSX 的动态列。
+    const columns = TABLE_SCHEMAS[name] ?? Array.from(
+      rows.reduce((all, row) => {
+        for (const key of Object.keys(row)) all.add(key);
+        return all;
+      }, new Set<string>())
+    );
+    files[`${name}.csv`] = strToU8(csvFromRows(rows, columns));
   }
   const zip = zipSync(files, { level: 6 });
   const filename = `班级数据_${todayStr().replace(/-/g, "")}_${new Date().toISOString().slice(11, 19).replace(/:/g, "")}.zip`;
