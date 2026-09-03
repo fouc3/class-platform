@@ -898,8 +898,8 @@
             ${field("方向", `<select id="q_dir">${SCORE_DIRECTIONS.map((s) => `<option>${s}</option>`).join("")}</select>`)}
             ${field("上报周期", `<select id="q_per">${SCORE_PERIODS.map((s) => `<option>${s}</option>`).join("")}</select>`)}
             ${field("时间", `<input type="date" id="q_date" value="${todayStr()}">`)}
-            ${field("加分", `<input type="number" id="q_add" min="0" max="100" step="0.5" value="0">`)}
-            ${field("扣分", `<input type="number" id="q_sub" min="0" max="100" step="0.5" value="0">`)}
+            ${field("加分", `<input type="number" id="q_add" min="0" max="100000" step="0.5" value="0">`)}
+            ${field("扣分", `<input type="number" id="q_sub" min="0" max="100000" step="0.5" value="0">`)}
           </div>
           ${studentNames.length > 0
             ? `<div class="field"><label>当事人（可选择多个学生）</label>

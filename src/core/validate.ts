@@ -153,7 +153,7 @@ export function checkField(label: string, value: string | undefined | null, opts
 }
 
 /** 对任意未知键做长度兜底校验（防止超长字段） */
-export function checkTableRow(row: Record<string, string>, maxLen = 2000): string | null {
+export function checkTableRow(row: Record<string, string>, maxLen = 20000): string | null {
   for (const [k, v] of Object.entries(row)) {
     if (v.length > maxLen) return `${k}长度不能超过 ${maxLen} 字`;
   }
