@@ -1,70 +1,78 @@
 # 班级学生成长平台（TypeScript 版）
 
-基于 `class_platform_v9.py` 的 TypeScript 复刻版，业务逻辑不变，采用 **Cloudflare Worker 标准** 架构，以**网站形式**提供服务（含学生端 + 教师后台）。
+基于 `class_platform_v9.py` 的 TypeScript 复刻版，业务逻辑不变，采用 **Cloudflare Worker 标准** 架构，
+**D1 数据库存储**，以**网站形式**提供服务（含学生端 + 教师后台）。
 
 ## 快速开始
 
 ```bash
-npm install          # 安装依赖（xlsx、fflate）
-npm run dev          # 启动本地开发服务器 → http://127.0.0.1:8787
+npm install                 # 安装依赖（xlsx、fflate）
+npm run db:init             # 初始化本地 D1：v9 数据 → d1.sql → 导入本地库
+npm run dev                 # 启动本地开发服务器（wrangler dev --local）→ http://127.0.0.1:8787
 ```
 
-- 首次启动自动读取根目录 `student_list.xlsx` 导入学生名单（姓名/学号/班级）。
+- `npm run db:init` 会自动扫描 `class_data/*.csv`（v9 的数据文件）+ 根目录 `student_list.xlsx`，
+  生成 `d1.sql` 并导入本地 D1 数据库（`.wrangler/state/`，已 gitignore）。
 - 学生端入口：输入姓名登录（必须是名单上的学生）。
-- 教师后台：默认密码 `123456`（侧边栏切到「👩‍🏫 教师后台」登录）。
-- 运行数据保存在 `data/`（每张表一个 JSON 文件），已 gitignore。
+- 教师后台：默认密码 `123456`（可通过环境变量 `TEACHER_PASSWORD` 覆盖）。
+- 生产部署：先 `wrangler d1 create class-platform-db` 拿到真实 database_id 填入 `wrangler.toml`，
+  再 `wrangler d1 execute class-platform-db --remote --file=d1.sql` 导入数据，最后 `wrangler deploy`。
 
 ## 架构
 
 ```
 src/
-├── index.ts            # CF Worker 入口（export default { fetch }，标准格式）
+├── index.ts              # CF Worker 入口（export default { fetch }，env.DB → D1Store）
 ├── api/
-│   ├── router.ts       # API 路由（/api/student/*、/api/teacher/*）
-│   └── session.ts      # 教师会话（登录颁发 token，MemorySessionStore）
+│   ├── router.ts         # API 路由（/api/student/*、/api/teacher/*）
+│   └── session.ts        # 教师会话（登录颁发 token，MemorySessionStore）
 ├── core/
-│   ├── student.ts      # 学生端业务逻辑（登录/档案/量化分/荣誉/活动/任务/反馈/请假）
-│   ├── teacher.ts      # 教师端业务逻辑（名单/统计/量化/活动/审批/导出）
-│   ├── validate.ts     # 身份证校验/年龄计算/手机号校验
-│   └── ai.ts           # AI 分析函数（与 v9 一致：功能关闭占位）
+│   ├── student.ts        # 学生端业务逻辑（登录/档案/量化分/荣誉/活动/任务/反馈/请假）
+│   ├── teacher.ts        # 教师端业务逻辑（名单/统计/量化/活动/审批/导出）
+│   ├── validate.ts       # 身份证校验/年龄计算/手机号校验
+│   └── ai.ts             # AI 分析函数（与 v9 一致：功能关闭占位）
 ├── storage/
-│   ├── types.ts        # 存储抽象：Store 接口 + 统一 readTable/writeTable
-│   └── fs-store.ts     # fs 实现（唯一触碰 node:fs 的文件）
-├── server/dev.ts       # 本地开发服务器（Node http 模拟 CF Worker 环境）
-└── scripts/seed.ts     # 学生名单 xlsx → JSON 导入
+│   ├── types.ts          # 存储抽象：Store 接口 + 统一 readTable/writeTable
+│   ├── d1-store.ts       # D1 实现（每张业务表 = id 自增主键 + data JSON 列）
+│   └── (可扩展其他实现：KV / R2 / 内存等，业务代码零改动)
+└── scripts/
+    └── migrate-v9-d1.ts  # v9 CSV/xlsx → D1 SQL 迁移脚本
 
-public/                 # 前端（原生 HTML/CSS/JS，重建自 v9 页面结构）
-├── index.html          # 学生 7 tab + 教师 8 tab 单页应用
+public/                   # 前端（原生 HTML/CSS/JS，重建自 v9 页面结构）
+├── index.html            # 学生 7 tab + 教师 8 tab 单页应用
 ├── style.css
 └── app.js
 ```
 
-## 关键设计
+## D1 存储格式（自定）
 
-1. **存储抽象（换存储零改动）**：所有数据读写只通过 `Store` 接口的统一函数
-   `readTable(name)` / `writeTable(name, rows)`。目前 `FsStore` 用 JSON 文件实现；
-   后续换 Cloudflare KV / D1 / R2 只需新增一个实现类，业务代码不动。
-2. **业务逻辑与 v9 一致**：身份证 18 位加权校验、年龄推算、手机号校验、档案 upsert、
-   量化分按"当事人包含姓名"匹配 + 多人拆行汇总、请假审批、zip 导出等规则逐一复刻。
-3. **CF Worker 标准**：`src/index.ts` 是标准 `export default { fetch }` 入口，
-   不含 Node 特有 API；部署到 Cloudflare 时静态资源走 Workers Assets（见 `wrangler.toml`），
-   存储/会话替换为云端实现即可。
+每张业务表对应 D1 一张表，两列：
 
-## 部署到 Cloudflare（可选）
+| 列 | 类型 | 说明 |
+|----|------|------|
+| `id` | INTEGER PRIMARY KEY AUTOINCREMENT | 行序稳定（对应 v9 的 df index，任务/请假按下标更新依赖它） |
+| `data` | TEXT | 整行 JSON（业务层 Row 全量写入） |
+
+理由：业务层 `Store` 接口语义是「整表读写」+ 内存过滤，无 SQL 查询需求；
+JSON 列可规避中文列名 / student_list 动态列问题；后续需要按列查询时再加真实列即可。
+
+## 迁移脚本用法
 
 ```bash
-# 1. 实现 Store 接口的云端版本（如 KV/D1），在 wrangler.toml 中绑定
-# 2. 会话改为 KV-backed
-npx wrangler deploy
+node src/scripts/migrate-v9-d1.ts                       # 默认：class_data/ + student_list.xlsx → d1.sql
+node src/scripts/migrate-v9-d1.ts --csv-dir <dir> --xlsx <file> --out <file>
 ```
+
+输出 `d1.sql`：`CREATE TABLE IF NOT EXISTS` + `INSERT` 语句，兼容 `wrangler d1 execute --file`。
 
 ## 常用命令
 
 | 命令 | 说明 |
 |------|------|
-| `npm run dev` | 本地启动网站（fs 存储） |
+| `npm run dev` | 本地启动网站（wrangler dev --local，D1 存储） |
+| `npm run migrate` | v9 数据 → 生成 d1.sql |
+| `npm run db:init` | 生成 d1.sql 并导入本地 D1 |
 | `npm run typecheck` | TypeScript 类型检查 |
-| `npm run seed` | 手动重新导入 student_list.xlsx → data/student_list.json |
 
 ## 说明
 

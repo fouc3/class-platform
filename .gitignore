@@ -3,8 +3,12 @@ node_modules/
 dist/
 .npm-cache/
 
-# 运行时数据（本地 fs 存储，每张表一个 JSON）
-data/
+# wrangler 本地状态（D1 本地库、registry、日志）
+.wrangler/
+.wrangler-local/
+
+# 生成的 D1 迁移 SQL（由 npm run migrate 生成）
+d1.sql
 
 # 日志
 *.log

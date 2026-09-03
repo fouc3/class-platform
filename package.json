@@ -3,15 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "班级学生成长平台 —— v9 的 TypeScript 复刻版（Cloudflare Worker 标准，存储抽象化）",
+  "description": "班级学生成长平台 —— v9 的 TypeScript 复刻版（D1 存储，CF Worker 标准）",
   "scripts": {
-    "dev": "node src/server/dev.ts",
-    "typecheck": "tsc --noEmit",
-    "seed": "node src/scripts/seed.ts"
+    "dev": "WRANGLER_REGISTRY_PATH=.wrangler-local/registry WRANGLER_LOG_PATH=.wrangler-local/logs WRANGLER_SEND_METRICS=false wrangler dev --local --port 8787",
+    "migrate": "node src/scripts/migrate-v9-d1.ts",
+    "db:init": "npm run migrate && wrangler d1 execute class-platform-db --local --file=d1.sql",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "fflate": "^0.8.2",
-    "playwright-core": "^1.62.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
