@@ -2,7 +2,7 @@
 // 与 v9 get_*_options() 函数保持完全一致
 
 /** 默认教师密码（仅当环境未注入 TEACHER_PASSWORD 时使用，与 v9 默认一致） */
-export const DEFAULT_TEACHER_PASSWORD = "123456";
+export const DEFAULT_TEACHER_PASSWORD = "test12345667";
 
 // ---------- 预设选项 ----------
 export const GENDER_OPTIONS = ["男", "女"];
